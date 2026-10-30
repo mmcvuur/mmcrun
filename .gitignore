@@ -1,0 +1,12 @@
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# SQLite transient WAL/SHM files
+*.db-shm
+*.db-wal
+
+# Dependencies & OS files
+node_modules/
+.DS_Store

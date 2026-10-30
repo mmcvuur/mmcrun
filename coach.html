@@ -1,0 +1,1415 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="tokyo-night">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a1b26" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="description" content="mmcRUN — Local Gemini AI Run Coach powered by SQLite3 Telemetry" />
+  <title>mmcRUN — Gemini Run Coach</title>
+
+  <!-- Icons & PWA Manifest -->
+  <link rel="icon" type="image/x-icon" href="/icons/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+  <link rel="manifest" href="/manifest.json" />
+
+  <!-- Preload Crisp JetBrains Mono Fonts -->
+  <link rel="preload" href="/fonts/JetBrainsMono-Regular.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/JetBrainsMono-Medium.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/JetBrainsMono-SemiBold.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/JetBrainsMono-Bold.woff2" as="font" type="font/woff2" crossorigin />
+
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    /* ==========================================================================
+       DEDICATED /COACH WORKSPACE LAYOUT (TOKYO NIGHT)
+       ========================================================================== */
+    .coach-shell {
+      display: flex;
+      flex-direction: column;
+      width: 100vw;
+      height: 100dvh;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 14% 16%, rgba(187, 154, 247, 0.08), transparent 46%),
+        radial-gradient(circle at 86% 84%, rgba(122, 162, 247, 0.08), transparent 48%),
+        var(--bg-deep);
+    }
+
+    .coach-workspace {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      padding: 10px 12px;
+      overflow-y: auto;
+    }
+
+    @media (min-width: 1024px) {
+      .coach-workspace {
+        grid-template-columns: 350px minmax(0, 1fr);
+        overflow: hidden;
+      }
+    }
+
+    /* Left Telemetry & Presets Column */
+    .coach-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    .coach-context-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .ctx-stat {
+      background: var(--bg-deep);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .ctx-label {
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      white-space: nowrap;
+    }
+
+    .ctx-val {
+      font-size: 14.5px;
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .ctx-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Quick Prompt Buttons */
+    .preset-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .preset-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+      width: 100%;
+      text-align: left;
+      padding: 9px 11px;
+      background: var(--bg-deep);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+    }
+
+    .preset-btn:hover:not(:disabled) {
+      background: var(--bg-hover);
+      border-color: var(--tn-purple);
+      transform: translateX(2px);
+    }
+
+    .preset-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .preset-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--text-bright);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .preset-desc {
+      font-size: 10.5px;
+      color: var(--text-dim);
+      line-height: 1.3;
+    }
+
+    /* Right Chat Panel */
+    .coach-chat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      display: flex;
+      flex-direction: column;
+      min-height: 520px;
+      height: 100%;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+    }
+
+    .chat-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: rgba(22, 22, 30, 0.45);
+      flex-wrap: wrap;
+    }
+
+    .chat-header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .chat-header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .model-select {
+      background: var(--bg-deep);
+      border: 1px solid var(--border-main);
+      color: var(--tn-cyan);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      outline: none;
+      cursor: pointer;
+    }
+
+    .model-select:focus {
+      border-color: var(--tn-blue);
+    }
+
+    /* Messages Stream */
+    .chat-messages {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      user-select: text;
+    }
+
+    .chat-empty-state {
+      margin: auto;
+      max-width: 540px;
+      text-align: center;
+      padding: 28px 20px;
+      background: rgba(22, 22, 30, 0.55);
+      border: 1px dashed var(--border-main);
+      border-radius: var(--radius-lg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .empty-badge {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(187, 154, 247, 0.14);
+      color: var(--tn-purple);
+      border: 1px solid rgba(187, 154, 247, 0.35);
+    }
+
+    .empty-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--text-bright);
+    }
+
+    .empty-sub {
+      font-size: 12px;
+      color: var(--text-main);
+      line-height: 1.55;
+    }
+
+    /* Message Bubbles */
+    .msg-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-width: 92%;
+    }
+
+    .msg-row.msg-user {
+      align-self: flex-end;
+      align-items: flex-end;
+    }
+
+    .msg-row.msg-model {
+      align-self: flex-start;
+      align-items: flex-start;
+      width: 100%;
+      max-width: 96%;
+    }
+
+    .msg-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      padding: 0 4px;
+    }
+
+    .msg-role-tag {
+      letter-spacing: 0.06em;
+    }
+
+    .msg-user .msg-role-tag {
+      color: var(--tn-blue);
+    }
+
+    .msg-model .msg-role-tag {
+      color: var(--tn-purple);
+    }
+
+    .msg-bubble {
+      padding: 12px 15px;
+      border-radius: var(--radius-md);
+      font-size: 12.5px;
+      line-height: 1.6;
+      overflow-x: auto;
+      max-width: 100%;
+    }
+
+    .msg-user .msg-bubble {
+      background: rgba(122, 162, 247, 0.14);
+      border: 1px solid rgba(122, 162, 247, 0.38);
+      color: var(--text-bright);
+      white-space: pre-wrap;
+    }
+
+    .msg-model .msg-bubble {
+      background: var(--bg-deep);
+      border: 1px solid var(--border-subtle);
+      border-left: 3px solid var(--tn-purple);
+      color: var(--text-bright);
+      width: 100%;
+    }
+
+    /* Rich Markdown Styles inside Coach Bubble */
+    .md-content h1,
+    .md-content h2,
+    .md-content h3,
+    .md-content h4 {
+      color: var(--tn-cyan);
+      font-weight: 800;
+      margin: 12px 0 6px 0;
+      line-height: 1.3;
+    }
+
+    .md-content h1:first-child,
+    .md-content h2:first-child,
+    .md-content h3:first-child {
+      margin-top: 0;
+    }
+
+    .md-content h1 { font-size: 15px; }
+    .md-content h2 { font-size: 14px; }
+    .md-content h3 { font-size: 13px; color: var(--tn-purple); }
+
+    .md-content p {
+      margin: 0 0 9px 0;
+    }
+
+    .md-content p:last-child {
+      margin-bottom: 0;
+    }
+
+    .md-content ul,
+    .md-content ol {
+      margin: 4px 0 10px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .md-content li {
+      line-height: 1.5;
+    }
+
+    .md-content strong {
+      color: var(--tn-yellow);
+      font-weight: 700;
+    }
+
+    .md-content code {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      color: var(--tn-green);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 11.5px;
+    }
+
+    .md-content pre {
+      background: var(--bg-main);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      overflow-x: auto;
+      margin: 8px 0;
+    }
+
+    .md-content pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      color: var(--text-bright);
+    }
+
+    .md-content blockquote {
+      border-left: 3px solid var(--tn-cyan);
+      background: rgba(125, 207, 255, 0.06);
+      padding: 7px 12px;
+      margin: 8px 0;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      color: var(--text-main);
+    }
+
+    .md-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 11.5px;
+    }
+
+    .md-content th,
+    .md-content td {
+      border: 1px solid var(--border-subtle);
+      padding: 6px 9px;
+      text-align: left;
+    }
+
+    .md-content th {
+      background: var(--bg-elevated);
+      color: var(--tn-cyan);
+      font-weight: 700;
+    }
+
+    .md-content tr:nth-child(even) td {
+      background: rgba(255, 255, 255, 0.015);
+    }
+
+    .md-content hr {
+      border: none;
+      border-top: 1px solid var(--border-subtle);
+      margin: 10px 0;
+    }
+
+    /* Thinking / Loading Indicator */
+    .coach-thinking {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 14px;
+      background: var(--bg-deep);
+      border: 1px solid var(--border-subtle);
+      border-left: 3px solid var(--tn-cyan);
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      color: var(--tn-cyan);
+      align-self: flex-start;
+    }
+
+    .pulse-dots {
+      display: inline-flex;
+      gap: 4px;
+    }
+
+    .pulse-dots span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--tn-cyan);
+      animation: coachPulse 1.2s infinite ease-in-out;
+    }
+
+    .pulse-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .pulse-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes coachPulse {
+      0%, 80%, 100% { opacity: 0.25; transform: scale(0.85); }
+      40% { opacity: 1; transform: scale(1.1); }
+    }
+
+    /* Composer Area */
+    .chat-composer {
+      padding: 10px 14px;
+      border-top: 1px solid var(--border-subtle);
+      background: rgba(22, 22, 30, 0.65);
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .composer-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+
+    .composer-input {
+      flex: 1;
+      background: var(--bg-input);
+      border: 1px solid var(--border-main);
+      border-radius: var(--radius-md);
+      color: var(--text-bright);
+      padding: 9px 12px;
+      font-size: 12.5px;
+      line-height: 1.45;
+      resize: vertical;
+      height: 54px;
+      min-height: 54px;
+      max-height: 320px;
+      outline: none;
+      transition: border-color 0.15s ease, height 0.16s ease;
+    }
+
+    .composer-input:focus {
+      border-color: var(--tn-purple);
+    }
+
+    .composer-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .composer-foot-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .input-size-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background: var(--bg-deep);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 2px 4px;
+    }
+
+    .input-size-label {
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+      padding: 0 4px;
+    }
+
+    .size-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      font-size: 9.5px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+
+    .size-btn:hover {
+      color: var(--text-bright);
+      background: var(--bg-hover);
+    }
+
+    .size-btn.active {
+      background: rgba(187, 154, 247, 0.16);
+      color: var(--tn-purple);
+      border-color: rgba(187, 154, 247, 0.4);
+    }
+
+    .key-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 10.5px;
+      font-weight: 700;
+      border: 1px solid var(--border-subtle);
+      cursor: pointer;
+      background: var(--bg-deep);
+    }
+
+    .key-pill.key-ready {
+      color: var(--tn-green);
+      border-color: rgba(158, 206, 106, 0.35);
+    }
+
+    .key-pill.key-missing {
+      color: var(--tn-orange);
+      border-color: rgba(255, 158, 100, 0.45);
+    }
+  </style>
+</head>
+<body>
+  <div class="coach-shell">
+    <!-- TOP TELEMETRY BAR -->
+    <header class="topbar">
+      <div class="brand-group">
+        <img src="/icons/favicon-32x32.png" alt="mmcRUN" class="brand-icon" width="24" height="24" />
+        <div class="brand-title-wrap">
+          <h1 class="brand-title"><span class="accent-slash">mmc</span>RUN</h1>
+          <span class="brand-subtitle">GEMINI AI RUN COACH</span>
+        </div>
+      </div>
+
+      <!-- 10KM GOAL LIVE HEADER PROGRESS -->
+      <div class="header-goal-strip" title="10KM Training Goal Progress">
+        <div class="header-goal-labels">
+          <span class="goal-tag">TARGET: <strong id="coachHeaderGoalDist">10.0 KM</strong></span>
+          <span class="goal-pct" id="coachHeaderGoalPct">0%</span>
+          <span class="goal-sub" id="coachHeaderGoalRem">10.00 km to go</span>
+        </div>
+        <div class="header-goal-bar-track">
+          <div class="header-goal-bar-fill" id="coachHeaderGoalFill" style="width: 0%"></div>
+          <div class="milestone-tick" style="left: 25%"></div>
+          <div class="milestone-tick" style="left: 50%"></div>
+          <div class="milestone-tick" style="left: 75%"></div>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <button type="button" class="key-pill key-missing" id="btnApiKeyStatus" title="Configure Gemini API Key & Coach Profile">
+          <span class="status-dot" id="apiKeyDot" style="background: var(--tn-orange)"></span>
+          <span id="apiKeyStatusText">SET API KEY</span>
+        </button>
+        <a href="/dashboard" class="btn btn-ghost btn-sm" style="text-decoration: none;">
+          DASHBOARD
+        </a>
+        <a href="/" class="btn btn-primary btn-sm" style="text-decoration: none;">
+          &larr; LOG &amp; CHARTS
+        </a>
+      </div>
+    </header>
+
+    <!-- MAIN COACH WORKSPACE -->
+    <main class="coach-workspace">
+      <!-- LEFT SIDEBAR: LIVE TELEMETRY CONTEXT & ONE-CLICK PROMPTS -->
+      <aside class="coach-sidebar">
+        <!-- LIVE TELEMETRY SNAPSHOT FED TO GEMINI -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-indicator indicator-purple"></span>
+              <h2 class="card-title">LIVE TELEMETRY CONTEXT</h2>
+            </div>
+            <span class="badge badge-cyan" id="ctxRunsCountBadge">0 RUNS</span>
+          </div>
+
+          <div class="coach-context-grid">
+            <div class="ctx-stat">
+              <span class="ctx-label">LATEST RUN</span>
+              <span class="ctx-val text-blue" id="ctxLatestRun">--</span>
+              <span class="ctx-sub" id="ctxLatestSub">No runs logged</span>
+            </div>
+            <div class="ctx-stat">
+              <span class="ctx-label">7-DAY VOLUME</span>
+              <span class="ctx-val text-green" id="ctx7dVol">0.0 KM</span>
+              <span class="ctx-sub" id="ctx7dSub">Goal: 24.0 KM</span>
+            </div>
+            <div class="ctx-stat">
+              <span class="ctx-label">LONGEST RUN</span>
+              <span class="ctx-val text-purple" id="ctxLongestRun">0.00 KM</span>
+              <span class="ctx-sub" id="ctxReadinessSub">Readiness: 0%</span>
+            </div>
+            <div class="ctx-stat">
+              <span class="ctx-label">10K PROJECTION</span>
+              <span class="ctx-val text-cyan" id="ctxProj10k">--:--</span>
+              <span class="ctx-sub" id="ctxTargetSub">Target: 5:20/km</span>
+            </div>
+          </div>
+
+          <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; font-size: 10.5px; color: var(--text-dim);">
+            <span id="ctxHrProfile">Max HR: 162 • Rest: 56</span>
+            <span class="text-green">AUTO-INJECTED</span>
+          </div>
+        </div>
+
+        <!-- ONE-CLICK COACHING PROMPTS -->
+        <div class="card" style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-indicator indicator-cyan"></span>
+              <h2 class="card-title">QUICK COACH ACTIONS</h2>
+            </div>
+          </div>
+
+          <div class="preset-list" id="presetList">
+            <button type="button" class="preset-btn" data-prompt="Analyze my latest run in detail. How was my pace, heart rate zone, and aerobic efficiency (meters/beat) compared to my recent runs, and how should I recover?">
+              <span class="preset-title"><span class="text-cyan">01 //</span> Analyze Latest Run</span>
+              <span class="preset-desc">Deep dive into pace, HR zone, efficiency &amp; recovery</span>
+            </button>
+
+            <button type="button" class="preset-btn" data-prompt="Based on my recent training load, rolling 7-day volume, and 10K goal progress, prescribe my exact next run (distance, run type, target pace range, and strict heart rate cap).">
+              <span class="preset-title"><span class="text-green">02 //</span> Next Workout Prescription</span>
+              <span class="preset-desc">Exact distance, pace &amp; HR zone for your next session</span>
+            </button>
+
+            <button type="button" class="preset-btn" data-prompt="Build me a structured 7-day training plan for this coming week tailored to my current fitness, weekly kilometer target, and 10K goal date. Include a table with Day, Workout Type, Distance, Target Pace, and HR Zone.">
+              <span class="preset-title"><span class="text-purple">03 //</span> Build 7-Day Training Schedule</span>
+              <span class="preset-desc">Full week table balanced with 80/20 aerobic distribution</span>
+            </button>
+
+            <button type="button" class="preset-btn" data-prompt="Review my aerobic efficiency (meters/beat) and heart rate vs. pace trends across all my logged runs. Am I building aerobic base effectively or running my easy days too hard?">
+              <span class="preset-title"><span class="text-blue">04 //</span> Aerobic Base &amp; HR Zone Audit</span>
+              <span class="preset-desc">Check Karvonen zone discipline &amp; cardiac drift trends</span>
+            </button>
+
+            <button type="button" class="preset-btn" data-prompt="Evaluate my readiness for my 10K goal distance and target pace. Give me an honest race-day pacing strategy (km 1-3, km 4-7, km 8-10) and what I need to focus on between now and my target date.">
+              <span class="preset-title"><span class="text-orange">05 //</span> 10K Goal Readiness &amp; Race Plan</span>
+              <span class="preset-desc">Projected finish vs target pace &amp; split strategy</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- RIGHT PANEL: GEMINI CHAT INTERFACE -->
+      <section class="coach-chat-card">
+        <div class="chat-header">
+          <div class="chat-header-left">
+            <span class="card-indicator indicator-purple"></span>
+            <h2 class="card-title">COACH CONVERSATION</h2>
+            <span class="badge badge-purple" id="msgCountBadge">0 MESSAGES</span>
+          </div>
+
+          <div class="chat-header-right">
+            <label for="modelSelect" class="text-xs text-muted">MODEL:</label>
+            <select id="modelSelect" class="model-select" title="Select Gemini Model">
+              <option value="gemini-3-flash-preview">gemini-3-flash (Fast — 1.4s)</option>
+              <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite (Lite)</option>
+              <option value="gemini-3.8-flash">gemini-3.8-flash</option>
+              <option value="gemini-3.1-pro-preview">gemini-3.1-pro-preview (Pro)</option>
+            </select>
+            <button type="button" class="btn btn-xs btn-ghost" id="btnOpenConfigModal">
+              API KEY &amp; PROFILE
+            </button>
+            <button type="button" class="btn btn-xs btn-danger-outline" id="btnClearChat" title="Clear conversation history">
+              CLEAR CHAT
+            </button>
+          </div>
+        </div>
+
+        <!-- CHAT STREAM -->
+        <div class="chat-messages" id="chatMessages">
+          <div class="chat-empty-state" id="chatEmptyState">
+            <span class="empty-badge">GEMINI TELEMETRY COACH</span>
+            <h3 class="empty-title">Your Personal Run Coach — Connected to SQLite3</h3>
+            <p class="empty-sub">
+              Every message automatically includes your latest logged runs, Karvonen heart rate zones, rolling weekly volume, and 10K goal targets. Pick a quick action on the left or ask anything below.
+            </p>
+            <button type="button" class="btn btn-primary btn-sm" id="btnEmptySetupKey">
+              CONFIGURE GEMINI API KEY
+            </button>
+          </div>
+        </div>
+
+        <!-- MESSAGE COMPOSER -->
+        <form class="chat-composer" id="chatForm" autocomplete="off">
+          <div class="composer-row">
+            <textarea
+              id="chatInput"
+              class="composer-input"
+              rows="2"
+              placeholder="Ask your run coach anything... (Enter to send, Shift+Enter for newline)"
+            ></textarea>
+            <button type="submit" class="btn btn-primary" id="btnSendChat" style="height: 42px; padding: 0 18px;">
+              SEND &rarr;
+            </button>
+          </div>
+          <div class="composer-foot">
+            <div class="composer-foot-left">
+              <div class="input-size-control" id="inputSizeControl" role="group" aria-label="Input text window height">
+                <span class="input-size-label">&#8597; INPUT HEIGHT:</span>
+                <button type="button" class="size-btn active" data-size="1x" title="Standard height (2 lines)">1X</button>
+                <button type="button" class="size-btn" data-size="2x" title="Double height for longer questions (6 lines)">2X (DOUBLE)</button>
+                <button type="button" class="size-btn" data-size="3x" title="Extra tall height for detailed prompts (10 lines)">3X (TALL)</button>
+              </div>
+              <span id="composerHint">Full run history &amp; HR zone telemetry attached automatically</span>
+            </div>
+            <span id="coachStatusText">READY</span>
+          </div>
+        </form>
+      </section>
+    </main>
+  </div>
+
+  <!-- GEMINI API KEY & RUNNER PROFILE MODAL -->
+  <div class="modal-backdrop hidden" id="coachConfigModal">
+    <div class="modal-card" style="max-width: 500px;">
+      <div class="modal-header">
+        <div class="card-title-group">
+          <span class="card-indicator indicator-purple"></span>
+          <h3 class="card-title">GEMINI API KEY &amp; COACH PROFILE</h3>
+        </div>
+        <button type="button" class="btn-icon" id="btnCloseConfigModal" aria-label="Close">&times;</button>
+      </div>
+
+      <form id="coachConfigForm" class="modal-body" style="display: flex; flex-direction: column; gap: 12px;">
+        <div class="form-field">
+          <label for="inputApiKey">GEMINI API KEY (SAVED LOCALLY IN .ENV)</label>
+          <input
+            type="password"
+            id="inputApiKey"
+            placeholder="Paste your AIza... key from Google AI Studio"
+            autocomplete="off"
+          />
+          <span class="text-xs text-muted" id="keySavedHint" style="margin-top: 4px; display: block;">
+            Stored locally in your git-ignored <code>.env</code> file and never saved in <code>mmcruns.db</code>.
+          </span>
+        </div>
+
+        <div class="form-field">
+          <label for="inputCoachModel">DEFAULT GEMINI MODEL</label>
+          <select id="inputCoachModel">
+            <option value="gemini-3-flash-preview">gemini-3-flash (Recommended — Fast &amp; Reliable)</option>
+            <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite (Lightweight)</option>
+            <option value="gemini-3.8-flash">gemini-3.8-flash</option>
+            <option value="gemini-3.1-pro-preview">gemini-3.1-pro-preview (Pro)</option>
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label for="inputCoachPersona">RUNNER PROFILE / CUSTOM CONTEXT (OPTIONAL)</label>
+          <textarea
+            id="inputCoachPersona"
+            rows="4"
+            placeholder="e.g. I run 3-4 days a week (Tue/Thu/Sun). Sunday is my long run day. Watch out for mild left calf tightness. Prefer 80/20 polarized training."
+            style="background: var(--bg-input); border: 1px solid var(--border-main); border-radius: var(--radius-sm); padding: 8px 10px; color: var(--text-bright); font-size: 12px; resize: vertical;"
+          ></textarea>
+          <span class="text-xs text-muted" style="margin-top: 4px; display: block;">
+            Included in Gemini's system instructions on every message.
+          </span>
+        </div>
+
+        <div class="modal-footer" style="padding: 8px 0 0 0; border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
+          <button type="button" class="btn btn-xs btn-danger-outline" id="btnClearSavedKey">CLEAR SAVED KEY</button>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn btn-ghost btn-sm" id="btnCancelConfigModal">CANCEL</button>
+            <button type="submit" class="btn btn-primary btn-sm">SAVE CONFIG</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div class="toast hidden" id="coachToast"></div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      let allRuns = [];
+      let settings = {
+        goal_distance_km: '10.0',
+        goal_target_pace: '5:20',
+        goal_target_date: '2026-12-06',
+        weekly_goal_km: '24.0',
+        max_hr: '162',
+        resting_hr: '56'
+      };
+      let coachConfig = {
+        hasApiKey: false,
+        maskedKey: '',
+        keySource: 'none',
+        model: 'gemini-3-flash-preview',
+        coachPersona: ''
+      };
+      let messages = [];
+      let isSending = false;
+
+      // DOM Elements
+      const chatMessagesEl = document.getElementById('chatMessages');
+      const chatEmptyStateEl = document.getElementById('chatEmptyState');
+      const chatForm = document.getElementById('chatForm');
+      const chatInput = document.getElementById('chatInput');
+      const btnSendChat = document.getElementById('btnSendChat');
+      const modelSelect = document.getElementById('modelSelect');
+      const msgCountBadge = document.getElementById('msgCountBadge');
+      const coachStatusText = document.getElementById('coachStatusText');
+
+      const btnApiKeyStatus = document.getElementById('btnApiKeyStatus');
+      const apiKeyDot = document.getElementById('apiKeyDot');
+      const apiKeyStatusText = document.getElementById('apiKeyStatusText');
+      const btnEmptySetupKey = document.getElementById('btnEmptySetupKey');
+
+      const coachConfigModal = document.getElementById('coachConfigModal');
+      const coachConfigForm = document.getElementById('coachConfigForm');
+      const inputApiKey = document.getElementById('inputApiKey');
+      const inputCoachModel = document.getElementById('inputCoachModel');
+      const inputCoachPersona = document.getElementById('inputCoachPersona');
+      const keySavedHint = document.getElementById('keySavedHint');
+
+      function showToast(msg, isError = false) {
+        const t = document.getElementById('coachToast');
+        t.textContent = msg;
+        t.style.borderColor = isError ? 'var(--tn-red)' : 'var(--tn-green)';
+        t.classList.remove('hidden');
+        clearTimeout(showToast._timer);
+        showToast._timer = setTimeout(() => t.classList.add('hidden'), 3200);
+      }
+
+      function formatPace(secPerKm) {
+        if (!Number.isFinite(secPerKm) || secPerKm <= 0) return '--:--';
+        const mins = Math.floor(secPerKm / 60);
+        const secs = Math.round(secPerKm % 60);
+        return `${mins}:${String(secs).padStart(2, '0')}`;
+      }
+
+      function formatDuration(totalSec) {
+        if (!Number.isFinite(totalSec) || totalSec <= 0) return '0:00';
+        const s = Math.round(totalSec);
+        const hrs = Math.floor(s / 3600);
+        const mins = Math.floor((s % 3600) / 60);
+        const secs = s % 60;
+        if (hrs > 0) {
+          return `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+        return `${mins}:${String(secs).padStart(2, '0')}`;
+      }
+
+      function escapeHtml(str) {
+        return String(str || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function formatInlineMarkdown(text) {
+        let out = escapeHtml(text);
+        out = out.replace(/`([^`]+)`/g, '<code>$1</code>');
+        out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        out = out.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+        return out;
+      }
+
+      // Lightweight, safe Markdown-to-HTML renderer for Coach replies
+      function renderMarkdown(md) {
+        const lines = String(md || '').replace(/\r\n/g, '\n').split('\n');
+        let html = '';
+        let inCodeBlock = false;
+        let codeBuffer = [];
+        let inUl = false;
+        let inOl = false;
+        let inTable = false;
+        let tableHeaderParsed = false;
+
+        const closeListsAndTables = () => {
+          if (inUl) { html += '</ul>'; inUl = false; }
+          if (inOl) { html += '</ol>'; inOl = false; }
+          if (inTable) { html += '</tbody></table>'; inTable = false; tableHeaderParsed = false; }
+        };
+
+        for (let i = 0; i < lines.length; i++) {
+          const rawLine = lines[i];
+          const trimmed = rawLine.trim();
+
+          if (trimmed.startsWith('```')) {
+            closeListsAndTables();
+            if (!inCodeBlock) {
+              inCodeBlock = true;
+              codeBuffer = [];
+            } else {
+              html += `<pre><code>${escapeHtml(codeBuffer.join('\n'))}</code></pre>`;
+              inCodeBlock = false;
+            }
+            continue;
+          }
+
+          if (inCodeBlock) {
+            codeBuffer.push(rawLine);
+            continue;
+          }
+
+          if (!trimmed) {
+            closeListsAndTables();
+            continue;
+          }
+
+          // Table row detection
+          if (trimmed.startsWith('|') && trimmed.endsWith('|') && trimmed.split('|').length > 2) {
+            if (inUl) { html += '</ul>'; inUl = false; }
+            if (inOl) { html += '</ol>'; inOl = false; }
+
+            const cells = trimmed
+              .slice(1, -1)
+              .split('|')
+              .map(c => c.trim());
+
+            // Check if separator line e.g. |---|---|
+            if (cells.every(c => /^[:\-]+$/.test(c))) {
+              continue;
+            }
+
+            if (!inTable) {
+              inTable = true;
+              tableHeaderParsed = true;
+              html += '<table><thead><tr>' + cells.map(c => `<th>${formatInlineMarkdown(c)}</th>`).join('') + '</tr></thead><tbody>';
+            } else {
+              html += '<tr>' + cells.map(c => `<td>${formatInlineMarkdown(c)}</td>`).join('') + '</tr>';
+            }
+            continue;
+          } else if (inTable) {
+            html += '</tbody></table>';
+            inTable = false;
+            tableHeaderParsed = false;
+          }
+
+          // Horizontal rule
+          if (/^---+$/.test(trimmed) || /^\*\*\*+$/.test(trimmed)) {
+            closeListsAndTables();
+            html += '<hr />';
+            continue;
+          }
+
+          // Headings
+          const hMatch = trimmed.match(/^(#{1,4})\s+(.*)$/);
+          if (hMatch) {
+            closeListsAndTables();
+            const level = hMatch[1].length;
+            html += `<h${level}>${formatInlineMarkdown(hMatch[2])}</h${level}>`;
+            continue;
+          }
+
+          // Blockquote
+          if (trimmed.startsWith('> ')) {
+            closeListsAndTables();
+            html += `<blockquote>${formatInlineMarkdown(trimmed.slice(2))}</blockquote>`;
+            continue;
+          }
+
+          // Unordered list
+          const ulMatch = trimmed.match(/^[-*+]\s+(.*)$/);
+          if (ulMatch) {
+            if (inOl) { html += '</ol>'; inOl = false; }
+            if (!inUl) { html += '<ul>'; inUl = true; }
+            html += `<li>${formatInlineMarkdown(ulMatch[1])}</li>`;
+            continue;
+          }
+
+          // Ordered list
+          const olMatch = trimmed.match(/^\d+\.\s+(.*)$/);
+          if (olMatch) {
+            if (inUl) { html += '</ul>'; inUl = false; }
+            if (!inOl) { html += '<ol>'; inOl = true; }
+            html += `<li>${formatInlineMarkdown(olMatch[1])}</li>`;
+            continue;
+          }
+
+          closeListsAndTables();
+          html += `<p>${formatInlineMarkdown(trimmed)}</p>`;
+        }
+
+        if (inCodeBlock) {
+          html += `<pre><code>${escapeHtml(codeBuffer.join('\n'))}</code></pre>`;
+        }
+        closeListsAndTables();
+        return html;
+      }
+
+      function renderTelemetrySidebar() {
+        const goalKm = parseFloat(settings.goal_distance_km) || 10.0;
+        const weeklyGoalKm = parseFloat(settings.weekly_goal_km) || 24.0;
+        const maxHr = parseInt(settings.max_hr, 10) || 162;
+        const restingHr = parseInt(settings.resting_hr, 10) || 56;
+
+        document.getElementById('coachHeaderGoalDist').textContent = `${goalKm.toFixed(1)} KM`;
+        document.getElementById('ctxRunsCountBadge').textContent = `${allRuns.length} RUNS`;
+        document.getElementById('ctxHrProfile').textContent = `Max HR: ${maxHr} • Rest: ${restingHr} BPM`;
+        document.getElementById('ctxTargetSub').textContent = `Target: ${settings.goal_target_pace || '5:20'}/km`;
+
+        if (allRuns.length === 0) return;
+
+        let longestRun = allRuns[0];
+        for (const r of allRuns) {
+          if (Number(r.distance_km) > Number(longestRun.distance_km)) longestRun = r;
+        }
+
+        const longestKm = Number(longestRun.distance_km);
+        const goalPct = Math.min(100, Math.round((longestKm / goalKm) * 100));
+        const remKm = Math.max(0, goalKm - longestKm);
+
+        document.getElementById('coachHeaderGoalPct').textContent = `${goalPct}%`;
+        document.getElementById('coachHeaderGoalRem').textContent =
+          remKm <= 0 ? '10K GOAL UNLOCKED!' : `${remKm.toFixed(2)} km to go`;
+        document.getElementById('coachHeaderGoalFill').style.width = `${goalPct}%`;
+
+        const latest = allRuns[allRuns.length - 1];
+        const latestMs = new Date(latest.run_date + 'T12:00:00').getTime();
+        const dayMs = 24 * 3600 * 1000;
+        const r7 = allRuns.filter(r => (latestMs - new Date(r.run_date + 'T12:00:00').getTime()) <= 7 * dayMs);
+        const km7 = r7.reduce((a, r) => a + Number(r.distance_km), 0);
+
+        const readiness = Math.min(
+          100,
+          Math.round(
+            Math.min(1, longestKm / goalKm) * 60 +
+            Math.min(1, km7 / weeklyGoalKm) * 25 +
+            Math.min(1, allRuns.length / 10) * 15
+          )
+        );
+
+        const qualRuns = allRuns.filter(r => Number(r.distance_km) >= 3.0);
+        const predPool = qualRuns.length > 0 ? qualRuns : allRuns;
+        const bestPredSec = Math.min(
+          ...predPool.map(r => Number(r.duration_sec) * Math.pow(goalKm / Math.max(0.5, Number(r.distance_km)), 1.06))
+        );
+
+        document.getElementById('ctxLatestRun').textContent = `${Number(latest.distance_km).toFixed(2)} KM @ ${latest.pace_display}`;
+        document.getElementById('ctxLatestSub').textContent = `${latest.run_date} • ${latest.avg_hr} BPM (${latest.run_type})`;
+
+        document.getElementById('ctx7dVol').textContent = `${km7.toFixed(1)} KM`;
+        document.getElementById('ctx7dSub').textContent = `${r7.length} runs / ${weeklyGoalKm.toFixed(1)} KM goal`;
+
+        document.getElementById('ctxLongestRun').textContent = `${longestKm.toFixed(2)} KM`;
+        document.getElementById('ctxReadinessSub').textContent = `10K Readiness: ${readiness}%`;
+
+        document.getElementById('ctxProj10k').textContent = formatDuration(bestPredSec);
+      }
+
+      function renderKeyStatus() {
+        modelSelect.value = coachConfig.model || 'gemini-3-flash-preview';
+        if (!modelSelect.value) modelSelect.value = 'gemini-3-flash-preview';
+        if (coachConfig.hasApiKey) {
+          btnApiKeyStatus.className = 'key-pill key-ready';
+          apiKeyDot.style.background = 'var(--tn-green)';
+          apiKeyStatusText.textContent = `KEY ACTIVE (${coachConfig.maskedKey || 'ENV'})`;
+          btnEmptySetupKey.classList.add('hidden');
+        } else {
+          btnApiKeyStatus.className = 'key-pill key-missing';
+          apiKeyDot.style.background = 'var(--tn-orange)';
+          apiKeyStatusText.textContent = 'SET GEMINI API KEY';
+          btnEmptySetupKey.classList.remove('hidden');
+        }
+      }
+
+      function renderMessages() {
+        msgCountBadge.textContent = `${messages.length} MESSAGES`;
+
+        // Remove previous message nodes while keeping empty state node reference
+        Array.from(chatMessagesEl.querySelectorAll('.msg-row, .coach-thinking')).forEach(el => el.remove());
+
+        if (messages.length === 0 && !isSending) {
+          chatEmptyStateEl.classList.remove('hidden');
+          return;
+        }
+
+        chatEmptyStateEl.classList.add('hidden');
+
+        for (const m of messages) {
+          const row = document.createElement('div');
+          const isUser = m.role === 'user';
+          row.className = `msg-row ${isUser ? 'msg-user' : 'msg-model'}`;
+
+          const timeLabel = m.created_at ? m.created_at.slice(0, 16).replace('T', ' ') : '';
+          const meta = document.createElement('div');
+          meta.className = 'msg-meta';
+          meta.innerHTML = `
+            <span class="msg-role-tag">${isUser ? 'YOU' : 'GEMINI RUN COACH'}</span>
+            ${!isUser && m.model ? `<span>• ${escapeHtml(m.model)}</span>` : ''}
+            ${timeLabel ? `<span>• ${escapeHtml(timeLabel)}</span>` : ''}
+          `;
+
+          const bubble = document.createElement('div');
+          bubble.className = `msg-bubble ${isUser ? '' : 'md-content'}`;
+          if (isUser) {
+            bubble.textContent = m.content;
+          } else {
+            bubble.innerHTML = renderMarkdown(m.content);
+          }
+
+          row.appendChild(meta);
+          row.appendChild(bubble);
+          chatMessagesEl.appendChild(row);
+        }
+
+        if (isSending) {
+          const thinking = document.createElement('div');
+          thinking.className = 'coach-thinking';
+          thinking.innerHTML = `
+            <div class="pulse-dots"><span></span><span></span><span></span></div>
+            <span>Analyzing your SQLite run telemetry &amp; HR zones with <strong>${escapeHtml(modelSelect.value)}</strong>...</span>
+          `;
+          chatMessagesEl.appendChild(thinking);
+        }
+
+        chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+      }
+
+      async function sendCoachPrompt(promptText) {
+        const text = String(promptText || '').trim();
+        if (!text || isSending) return;
+
+        if (!coachConfig.hasApiKey) {
+          openConfigModal();
+          showToast('Please paste your Gemini API key first', true);
+          return;
+        }
+
+        isSending = true;
+        btnSendChat.disabled = true;
+        document.querySelectorAll('.preset-btn').forEach(b => (b.disabled = true));
+        coachStatusText.textContent = 'THINKING...';
+        coachStatusText.style.color = 'var(--tn-cyan)';
+
+        // Optimistically show user message
+        messages.push({
+          role: 'user',
+          content: text,
+          model: modelSelect.value,
+          created_at: new Date().toISOString()
+        });
+        chatInput.value = '';
+        renderMessages();
+
+        try {
+          const res = await fetch('/api/coach/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: text,
+              model: modelSelect.value
+            })
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error || 'Failed to get response from Gemini');
+          }
+          messages = data.messages || [];
+          coachStatusText.textContent = 'SYNCED TO SQLITE3';
+          coachStatusText.style.color = 'var(--tn-green)';
+        } catch (err) {
+          // Remove optimistic message on failure and restore input
+          messages.pop();
+          chatInput.value = text;
+          coachStatusText.textContent = 'ERROR';
+          coachStatusText.style.color = 'var(--tn-red)';
+          showToast(err.message, true);
+        } finally {
+          isSending = false;
+          btnSendChat.disabled = false;
+          document.querySelectorAll('.preset-btn').forEach(b => (b.disabled = false));
+          renderMessages();
+        }
+      }
+
+      function openConfigModal() {
+        inputApiKey.value = '';
+        inputApiKey.placeholder = coachConfig.hasApiKey
+          ? `Active Key: ${coachConfig.maskedKey} (leave blank to keep)`
+          : 'Paste your AIza... key from Google AI Studio';
+        keySavedHint.innerHTML = coachConfig.hasApiKey
+          ? `<span class="text-green">✓ Active key configured in <code>.env</code> (${escapeHtml(coachConfig.maskedKey)}).</span> Enter a new key only if you want to replace it.`
+          : 'Stored locally in your git-ignored <code>.env</code> file.';
+        inputCoachModel.value = coachConfig.model || 'gemini-3-flash-preview';
+        if (!inputCoachModel.value) inputCoachModel.value = 'gemini-3-flash-preview';
+        inputCoachPersona.value = coachConfig.coachPersona || '';
+        coachConfigModal.classList.remove('hidden');
+        if (!coachConfig.hasApiKey) {
+          setTimeout(() => inputApiKey.focus(), 50);
+        }
+      }
+
+      function closeConfigModal() {
+        coachConfigModal.classList.add('hidden');
+      }
+
+      const inputSizeControl = document.getElementById('inputSizeControl');
+      const INPUT_HEIGHT_MAP = {
+        '1x': '54px',
+        '2x': '124px',
+        '3x': '200px'
+      };
+
+      function applyInputSize(sizeKey, save = true) {
+        const key = INPUT_HEIGHT_MAP[sizeKey] ? sizeKey : '1x';
+        chatInput.style.height = INPUT_HEIGHT_MAP[key];
+        if (inputSizeControl) {
+          inputSizeControl.querySelectorAll('.size-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.size === key);
+          });
+        }
+        if (save) {
+          try {
+            localStorage.setItem('mmc_coach_input_size', key);
+          } catch (_) {}
+        }
+        chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+      }
+
+      if (inputSizeControl) {
+        inputSizeControl.addEventListener('click', e => {
+          const btn = e.target.closest('.size-btn');
+          if (!btn) return;
+          applyInputSize(btn.dataset.size, true);
+          chatInput.focus();
+        });
+      }
+
+      try {
+        const savedSize = localStorage.getItem('mmc_coach_input_size');
+        if (savedSize && INPUT_HEIGHT_MAP[savedSize]) {
+          applyInputSize(savedSize, false);
+        }
+      } catch (_) {}
+
+      // Event Listeners
+      chatForm.addEventListener('submit', e => {
+        e.preventDefault();
+        sendCoachPrompt(chatInput.value);
+      });
+
+      chatInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendCoachPrompt(chatInput.value);
+        }
+      });
+
+      document.getElementById('presetList').addEventListener('click', e => {
+        const btn = e.target.closest('.preset-btn');
+        if (!btn || btn.disabled) return;
+        sendCoachPrompt(btn.dataset.prompt);
+      });
+
+      modelSelect.addEventListener('change', async () => {
+        coachConfig.model = modelSelect.value;
+        await fetch('/api/coach/config', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: modelSelect.value })
+        }).catch(() => {});
+      });
+
+      btnApiKeyStatus.addEventListener('click', openConfigModal);
+      document.getElementById('btnOpenConfigModal').addEventListener('click', openConfigModal);
+      btnEmptySetupKey.addEventListener('click', openConfigModal);
+      document.getElementById('btnCloseConfigModal').addEventListener('click', closeConfigModal);
+      document.getElementById('btnCancelConfigModal').addEventListener('click', closeConfigModal);
+
+      coachConfigForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        try {
+          const res = await fetch('/api/coach/config', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              apiKey: inputApiKey.value.trim(),
+              model: inputCoachModel.value,
+              coachPersona: inputCoachPersona.value.trim()
+            })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Failed to save config');
+          coachConfig = data.coachConfig;
+          renderKeyStatus();
+          closeConfigModal();
+          showToast('Coach configuration saved to SQLite3');
+        } catch (err) {
+          showToast(err.message, true);
+        }
+      });
+
+      document.getElementById('btnClearSavedKey').addEventListener('click', async () => {
+        try {
+          const res = await fetch('/api/coach/config', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ apiKey: '', clearKey: true })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            coachConfig = data.coachConfig;
+            renderKeyStatus();
+            closeConfigModal();
+            showToast('Saved API key cleared');
+          }
+        } catch (err) {
+          showToast(err.message, true);
+        }
+      });
+
+      document.getElementById('btnClearChat').addEventListener('click', async () => {
+        if (messages.length === 0) return;
+        try {
+          const res = await fetch('/api/coach/messages', { method: 'DELETE' });
+          if (res.ok) {
+            messages = [];
+            renderMessages();
+            showToast('Conversation history cleared');
+          }
+        } catch (err) {
+          showToast('Failed to clear chat', true);
+        }
+      });
+
+      async function init() {
+        try {
+          const res = await fetch('/api/coach');
+          const data = await res.json();
+          allRuns = data.runs || [];
+          settings = { ...settings, ...(data.settings || {}) };
+          messages = data.messages || [];
+          if (data.coachConfig) {
+            coachConfig = { ...coachConfig, ...data.coachConfig };
+          }
+        } catch (err) {
+          showToast('Could not load telemetry from server', true);
+        }
+        renderTelemetrySidebar();
+        renderKeyStatus();
+        renderMessages();
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="tokyo-night">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a1b26" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="description" content="mmcRUN — Full-Window Overall Running Statistics Dashboard" />
+  <title>mmcRUN — Dashboard</title>
+
+  <!-- Icons & PWA Manifest -->
+  <link rel="icon" type="image/x-icon" href="/icons/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+  <link rel="manifest" href="/manifest.json" />
+
+  <!-- Preload Crisp JetBrains Mono Fonts -->
+  <link rel="preload" href="/fonts/JetBrainsMono-Regular.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/JetBrainsMono-Medium.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/JetBrainsMono-SemiBold.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/JetBrainsMono-Bold.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/JetBrainsMono-ExtraBold.woff2" as="font" type="font/woff2" crossorigin />
+
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    /* ==========================================================================
+       FULL-WINDOW BIG-NUMBERS DASHBOARD LAYOUT (/dashboard)
+       ========================================================================== */
+    .dash-shell {
+      display: flex;
+      flex-direction: column;
+      width: 100vw;
+      height: 100dvh;
+      overflow-x: hidden;
+      overflow-y: auto;
+      background:
+        radial-gradient(circle at 18% 12%, rgba(122, 162, 247, 0.08), transparent 48%),
+        radial-gradient(circle at 82% 85%, rgba(187, 154, 247, 0.07), transparent 48%),
+        var(--bg-deep);
+    }
+
+    .dash-main {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 10px 12px;
+    }
+
+    /* 8 Big Hero Stat Blocks Grid */
+    .dash-hero-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      flex: 2;
+      min-height: 0;
+    }
+
+    @media (min-width: 600px) {
+      .dash-hero-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .dash-shell {
+        overflow: hidden;
+      }
+      .dash-hero-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-rows: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    .dash-tile {
+      position: relative;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 14px 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-width: 0;
+      min-height: 145px;
+      overflow: hidden;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.26);
+      transition: border-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .dash-tile:hover {
+      border-color: var(--border-main);
+    }
+
+    .dash-tile::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      opacity: 0.85;
+    }
+
+    .tile-blue::before   { background: var(--tn-blue); }
+    .tile-green::before  { background: var(--tn-green); }
+    .tile-purple::before { background: var(--tn-purple); }
+    .tile-red::before    { background: var(--tn-red); }
+    .tile-orange::before { background: var(--tn-orange); }
+    .tile-cyan::before   { background: var(--tn-cyan); }
+    .tile-yellow::before { background: var(--tn-yellow); }
+    .tile-teal::before   { background: var(--tn-teal); }
+
+    .tile-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .tile-label {
+      font-size: 11.5px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tile-badge {
+      font-size: 10.5px;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .tile-center {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      margin: 4px 0;
+      min-width: 0;
+    }
+
+    .tile-number-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      white-space: nowrap;
+      min-width: 0;
+    }
+
+    .tile-number {
+      font-size: clamp(34px, 3.8vw, 56px);
+      font-weight: 800;
+      line-height: 1.0;
+      letter-spacing: -0.04em;
+    }
+
+    .tile-number-sm {
+      font-size: clamp(30px, 3.3vw, 48px);
+    }
+
+    .tile-unit {
+      font-size: clamp(14px, 1.3vw, 20px);
+      font-weight: 800;
+      color: var(--text-dim);
+    }
+
+    .tile-meta {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tile-bottom {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .tile-bar {
+      height: 6px;
+      background: var(--bg-deep);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .tile-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.4s ease;
+    }
+
+    .tile-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .tile-foot span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Bottom 3-Column Wide Summary Strip */
+    .dash-bottom-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      flex: 0.9;
+      min-height: 0;
+    }
+
+    @media (min-width: 1024px) {
+      .dash-bottom-grid {
+        grid-template-columns: 1.05fr 1fr 1.15fr;
+        grid-template-rows: minmax(0, 1fr);
+      }
+    }
+
+    .dash-wide-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 13px 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 10px;
+      min-width: 0;
+      overflow: hidden;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.24);
+    }
+
+    /* Volume Split Card */
+    .vol-split-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      flex: 1;
+      align-items: center;
+    }
+
+    .vol-box {
+      background: var(--bg-deep);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .vol-box-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .vol-box-val {
+      font-size: clamp(20px, 2vw, 28px);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      white-space: nowrap;
+    }
+
+    .vol-box-sub {
+      font-size: 10px;
+      color: var(--text-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* HR Zone Stacked Bar & Big Pills */
+    .stacked-zone-bar {
+      display: flex;
+      height: 12px;
+      background: var(--bg-deep);
+      border-radius: 999px;
+      overflow: hidden;
+      gap: 2px;
+    }
+
+    .stacked-seg {
+      height: 100%;
+      transition: width 0.35s ease;
+    }
+
+    .zone-big-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .zone-big-item {
+      background: var(--bg-deep);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 7px 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .zb-name {
+      font-size: 9.5px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .zb-pct {
+      font-size: clamp(16px, 1.5vw, 22px);
+      font-weight: 800;
+      line-height: 1.1;
+    }
+
+    .zb-bpm {
+      font-size: 8.5px;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    /* Recent Runs Skyline Bars */
+    .skyline-stage {
+      flex: 1;
+      min-height: 95px;
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+      padding-top: 18px;
+      position: relative;
+      border-bottom: 1px solid var(--border-main);
+    }
+
+    .skyline-goal-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      border-top: 1.5px dashed rgba(158, 206, 106, 0.55);
+      pointer-events: none;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .skyline-goal-tag {
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--tn-green);
+      background: var(--bg-card);
+      padding: 0 4px;
+      transform: translateY(-50%);
+    }
+
+    .skyline-col {
+      flex: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .skyline-val {
+      font-size: 9.5px;
+      font-weight: 800;
+      color: var(--text-bright);
+      white-space: nowrap;
+    }
+
+    .skyline-bar {
+      width: 100%;
+      max-width: 34px;
+      background: linear-gradient(180deg, var(--tn-cyan), var(--tn-blue));
+      border-radius: 4px 4px 0 0;
+      min-height: 4px;
+      transition: height 0.35s ease;
+    }
+
+    .skyline-date {
+      font-size: 8.5px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      padding-top: 3px;
+    }
+
+    .skyline-dates-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .skyline-dates-row span {
+      flex: 1;
+      text-align: center;
+      font-size: 9px;
+      font-weight: 600;
+      color: var(--text-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  </style>
+</head>
+<body>
+  <div class="dash-shell">
+    <!-- TOP TELEMETRY BAR -->
+    <header class="topbar">
+      <div class="brand-group">
+        <img src="/icons/favicon-32x32.png" alt="mmcRUN" class="brand-icon" width="24" height="24" />
+        <div class="brand-title-wrap">
+          <h1 class="brand-title"><span class="accent-slash">mmc</span>RUN</h1>
+          <span class="brand-subtitle">OVERALL STATS DASHBOARD</span>
+        </div>
+      </div>
+
+      <!-- 10KM GOAL LIVE HEADER PROGRESS -->
+      <div class="header-goal-strip" title="10KM Training Goal Progress">
+        <div class="header-goal-labels">
+          <span class="goal-tag">10K GOAL: <strong id="dashHeaderGoalDist">10.0 KM</strong></span>
+          <span class="goal-pct" id="dashHeaderGoalPct">0%</span>
+          <span class="goal-sub" id="dashHeaderGoalRem">10.00 km to go</span>
+        </div>
+        <div class="header-goal-bar-track">
+          <div class="header-goal-bar-fill" id="dashHeaderGoalFill" style="width: 0%"></div>
+          <div class="milestone-tick" style="left: 25%"></div>
+          <div class="milestone-tick" style="left: 50%"></div>
+          <div class="milestone-tick" style="left: 75%"></div>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <div class="segmented-control" id="dashPeriodTabs">
+          <button type="button" class="seg-btn active" data-period="all">ALL TIME</button>
+          <button type="button" class="seg-btn" data-period="30">LAST 30D</button>
+          <button type="button" class="seg-btn" data-period="7">LAST 7D</button>
+        </div>
+        <a href="/coach" class="btn btn-ghost btn-sm" style="text-decoration: none; color: var(--tn-purple); border-color: rgba(187, 154, 247, 0.35);" title="Open Gemini AI Run Coach">
+          AI COACH
+        </a>
+        <a href="/" class="btn btn-primary btn-sm" style="text-decoration: none;">
+          &larr; LOG &amp; CHARTS
+        </a>
+      </div>
+    </header>
+
+    <!-- FULL-WINDOW MAIN DASHBOARD -->
+    <main class="dash-main">
+      <!-- 8 LARGE HERO TELEMETRY TILES -->
+      <section class="dash-hero-grid">
+        <!-- 1. TOTAL DISTANCE -->
+        <article class="dash-tile tile-blue">
+          <div class="tile-top">
+            <span class="tile-label">TOTAL DISTANCE</span>
+            <span class="tile-badge text-blue" id="tileRunsCountBadge">0 RUNS</span>
+          </div>
+          <div class="tile-center">
+            <div class="tile-number-row">
+              <span class="tile-number text-blue" id="tileTotalKm">0.00</span>
+              <span class="tile-unit">KM</span>
+            </div>
+            <div class="tile-meta" id="tileAvgDistMeta">Avg 0.00 KM per run</div>
+          </div>
+          <div class="tile-bottom">
+            <div class="tile-bar">
+              <div class="tile-bar-fill bg-blue" id="tileTotalKmBar" style="width: 100%"></div>
+            </div>
+            <div class="tile-foot">
+              <span id="tileFirstRunDate">First: --</span>
+              <span id="tileLastRunDate">Latest: --</span>
+            </div>
+          </div>
+        </article>
+
+        <!-- 2. 10KM GOAL PROGRESS -->
+        <article class="dash-tile tile-green">
+          <div class="tile-top">
+            <span class="tile-label">10KM GOAL PROGRESS</span>
+            <span class="tile-badge text-green" id="tileReadinessBadge">READINESS 0%</span>
+          </div>
+          <div class="tile-center">
+            <div class="tile-number-row">
+              <span class="tile-number text-green" id="tileLongestKm">0.00</span>
+              <span class="tile-unit">/ <span id="tileGoalKm">10.0</span> KM</span>
+            </div>
+            <div class="tile-meta" id="tileGoalPctMeta">0% of 10KM goal distance</div>
+          </div>
+          <div class="tile-bottom">
+            <div class="tile-bar">
+              <div class="tile-bar-fill bg-green" id="tileGoalBar" style="width: 0%"></div>
+            </div>
+            <div class="tile-foot">
+              <span id="tileRemainingKm">10.00 KM remaining</span>
+              <span id="tileNextLongKm">Next: 3.50 KM</span>
+            </div>
+          </div>
+        </article>
+
+        <!-- 3. OVERALL AVG PACE -->
+        <article class="dash-tile tile-purple">
+          <div class="tile-top">
+            <span class="tile-label">OVERALL AVG PACE</span>
+            <span class="tile-badge text-purple" id="tileAvgSpeedBadge">0.0 KM/H</span>
+          </div>
+          <div class="tile-center">
+            <div class="tile-number-row">
+              <span class="tile-number text-purple" id="tileAvgPace">--:--</span>
+              <span class="tile-unit">/KM</span>
+            </div>
+            <div class="tile-meta" id="tileBestPaceMeta">Best pace: --:-- /km</div>
+          </div>
+          <div class="tile-bottom">
+            <div class="tile-bar">
+              <div class="tile-bar-fill bg-purple" id="tilePaceBar" style="width: 75%"></div>
+            </div>
+            <div class="tile-foot">
+              <span id="tileSlowestPace">Easy: --:--/km</span>
+              <span id="tileFastestPace">Peak: --:--/km</span>
+            </div>
+          </div>
+        </article>
+
+        <!-- 4. AVERAGE HEART RATE -->
+        <article class="dash-tile tile-red">
+          <div class="tile-top">
+            <span class="tile-label">AVG HEART RATE</span>
+            <span class="tile-badge text-red" id="tileDomZoneBadge">Z2 AEROBIC</span>
+          </div>
+          <div class="tile-center">
+            <div class="tile-number-row">
+              <span class="tile-number text-red" id="tileAvgHr">---</span>
+              <span class="tile-unit">BPM</span>
+            </div>
+            <div class="tile-meta" id="tileHrRangeMeta">Range: -- to -- BPM</div>
+          </div>
+          <div class="tile-bottom">
+            <div class="tile-bar">
+              <div class="tile-bar-fill bg-red" id="tileHrBar" style="width: 75%"></div>
+            </div>
+            <div class="tile-foot">
+              <span id="tileMaxHrConfig">Max HR: 162 BPM</span>
+              <span id="tileAerobicEf">EF: -- m/beat</span>
+            </div>
+          </div>
+        </article>
+
+        <!-- 5. TOTAL RUN TIME -->
+        <article class="dash-tile tile-orange">
+          <div class="tile-top">
+            <span class="tile-label">TOTAL TIME ON FEET</span>
+            <span class="tile-badge text-orange" id="tileTotalMinsBadge">0 MINS</span>
+          </div>
+          <div class="tile-center">
+            <div class="tile-number-row">
+              <span class="tile-number tile-number-sm text-orange" id="tileTotalTime">0h 00m</span>
+            </div>
+            <div class="tile-meta" id="tileAvgDurationMeta">Avg --:-- per session</div>
+          </div>
+          <div class="tile-bottom">
+            <div class="tile-bar">
+              <div class="tile-bar-fill bg-orange" id="tileTimeBar" style="width: 80%"></div>
+            </div>
+            <div class="tile-foot">
+              <span id="tileLongestDuration">Longest: --:--</span>
+              <span id="tileTotalCalories">Est. -- kcal</span>
+            </div>
+          </div>
+        </article>
+
+        <!-- 6. FASTEST 5K PERSONAL RECORD -->
+        <article class="dash-tile tile-cyan">
+          <div class="tile-top">
+            <span class="tile-label">FASTEST 5K RECORD</span>
+            <span class="tile-badge text-cyan" id="tile5kCountBadge">0x 5K+ RUNS</span>
+          </div>
+          <div class="tile-center">
+            <div class="tile-number-row">
+              <span class="tile-number text-cyan" id="tileFastest5k">--:--</span>
+            </div>
+            <div class="tile-meta" id="tileFastest5kMeta">5.00 KM split @ --:--/km</div>
+          </div>
+          <div class="tile-bottom">
+            <div class="tile-bar">
+              <div class="tile-bar-fill bg-cyan" id="tile5kBar" style="width: 85%"></div>
+            </div>
+            <div class="tile-foot">
+              <span id="tileFastest5kDate">Date: --</span>
+              <span id="tileFastest5kFull">Full run: --</span>
+            </div>
+          </div>
+        </article>
+
+        <!-- 7. PROJECTED 10K FINISH -->
+        <article class="dash-tile tile-yellow">
+          <div class="tile-top">
+            <span class="tile-label">EST. 10K FINISH</span>
+            <span class="tile-badge text-yellow" id="tile10kPaceBadge">--:--/KM</span>
+          </div>
+          <div class="tile-center">
+            <div class="tile-number-row">
+              <span class="tile-number tile-number-sm text-yellow" id="tilePred10k">--:--</span>
+            </div>
+            <div class="tile-meta" id="tilePred10kMeta">Riegel race projection</div>
+          </div>
+          <div class="tile-bottom">
+            <div class="tile-bar">
+              <div class="tile-bar-fill" id="tilePred10kBar" style="width: 75%; background-color: var(--tn-yellow);"></div>
+            </div>
+            <div class="tile-foot">
+              <span id="tileTarget10kPace">Target: 5:20/km</span>
+              <span id="tileTarget10kDate">Goal: Dec 6</span>
+            </div>
+          </div>
+        </article>
+
+        <!-- 8. LATEST LOGGED RUN -->
+        <article class="dash-tile tile-teal">
+          <div class="tile-top">
+            <span class="tile-label">LATEST RUN</span>
+            <span class="tile-badge" id="tileLatestDateBadge" style="color: var(--tn-teal);">--</span>
+          </div>
+          <div class="tile-center">
+            <div class="tile-number-row">
+              <span class="tile-number" id="tileLatestKm" style="color: var(--tn-teal);">0.00</span>
+              <span class="tile-unit">KM</span>
+            </div>
+            <div class="tile-meta" id="tileLatestPaceHrMeta">--:-- /km &bull; --- BPM</div>
+          </div>
+          <div class="tile-bottom">
+            <div class="tile-bar">
+              <div class="tile-bar-fill" id="tileLatestBar" style="width: 50%; background-color: var(--tn-teal);"></div>
+            </div>
+            <div class="tile-foot">
+              <span id="tileLatestDuration">Time: --:--</span>
+              <span id="tileLatestEf">EF: -- m/b</span>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- BOTTOM 3-COLUMN WIDE SUMMARY STRIP -->
+      <section class="dash-bottom-grid">
+        <!-- 1. ROLLING VOLUME BREAKDOWN -->
+        <div class="dash-wide-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-indicator indicator-cyan"></span>
+              <h2 class="card-title">ROLLING TRAINING VOLUME</h2>
+            </div>
+            <span class="text-muted text-xs" id="wideWeeklyGoalLabel">WEEKLY GOAL: 24.0 KM</span>
+          </div>
+
+          <div class="vol-split-row">
+            <div class="vol-box">
+              <span class="vol-box-label">LAST 7 DAYS</span>
+              <span class="vol-box-val text-cyan" id="vol7dKm">0.0 <small style="font-size:11px">KM</small></span>
+              <span class="vol-box-sub" id="vol7dRuns">0 runs</span>
+            </div>
+            <div class="vol-box">
+              <span class="vol-box-label">LAST 14 DAYS</span>
+              <span class="vol-box-val text-blue" id="vol14dKm">0.0 <small style="font-size:11px">KM</small></span>
+              <span class="vol-box-sub" id="vol14dRuns">0 runs</span>
+            </div>
+            <div class="vol-box">
+              <span class="vol-box-label">LAST 30 DAYS</span>
+              <span class="vol-box-val text-purple" id="vol30dKm">0.0 <small style="font-size:11px">KM</small></span>
+              <span class="vol-box-sub" id="vol30dRuns">0 runs</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. HEART RATE ZONE DISTRIBUTION -->
+        <div class="dash-wide-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-indicator indicator-red"></span>
+              <h2 class="card-title">HEART RATE ZONE DISTRIBUTION</h2>
+            </div>
+            <span class="text-muted text-xs" id="wideMaxHrLabel">MAX HR: 162 BPM</span>
+          </div>
+
+          <div class="stacked-zone-bar" id="stackedZoneBar"></div>
+          <div class="zone-big-grid" id="zoneBigGrid"></div>
+        </div>
+
+        <!-- 3. RECENT RUNS SKYLINE vs 10K GOAL -->
+        <div class="dash-wide-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-indicator indicator-green"></span>
+              <h2 class="card-title">RECENT RUNS DISTANCE SKYLINE</h2>
+            </div>
+            <span class="text-muted text-xs">LAST 10 SESSIONS</span>
+          </div>
+
+          <div class="skyline-stage" id="skylineStage"></div>
+          <div class="skyline-dates-row" id="skylineDatesRow"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      const COLORS = {
+        blue: '#7aa2f7',
+        cyan: '#7dcfff',
+        purple: '#bb9af7',
+        red: '#f7768e',
+        green: '#9ece6a',
+        orange: '#ff9e64',
+        yellow: '#e0af68'
+      };
+
+      let allRuns = [];
+      let settings = {
+        goal_distance_km: '10.0',
+        goal_target_pace: '5:20',
+        goal_target_date: '2026-12-06',
+        weekly_goal_km: '24.0',
+        max_hr: '162',
+        resting_hr: '56'
+      };
+      let activePeriod = 'all';
+
+      function formatPace(secPerKm) {
+        if (!Number.isFinite(secPerKm) || secPerKm <= 0) return '--:--';
+        const mins = Math.floor(secPerKm / 60);
+        const secs = Math.round(secPerKm % 60);
+        return `${mins}:${String(secs).padStart(2, '0')}`;
+      }
+
+      function formatDuration(totalSec) {
+        if (!Number.isFinite(totalSec) || totalSec <= 0) return '--:--';
+        const hrs = Math.floor(totalSec / 3600);
+        const mins = Math.floor((totalSec % 3600) / 60);
+        const secs = Math.round(totalSec % 60);
+        if (hrs > 0) {
+          return `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+        return `${mins}:${String(secs).padStart(2, '0')}`;
+      }
+
+      function formatTotalHours(totalSec) {
+        if (!Number.isFinite(totalSec) || totalSec <= 0) return '0h 00m';
+        const hrs = Math.floor(totalSec / 3600);
+        const mins = Math.round((totalSec % 3600) / 60);
+        return `${hrs}h ${String(mins).padStart(2, '0')}m`;
+      }
+
+      function formatShortDate(dateStr) {
+        if (!dateStr) return '--';
+        const parts = dateStr.split('-');
+        if (parts.length !== 3) return dateStr;
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const m = parseInt(parts[1], 10) - 1;
+        return `${months[m] || parts[1]} ${parseInt(parts[2], 10)}`;
+      }
+
+      function calcMetersPerBeat(paceSecPerKm, avgHr) {
+        if (!paceSecPerKm || !avgHr || paceSecPerKm <= 0 || avgHr <= 0) return 0;
+        const speedMetersPerMin = 1000 / (paceSecPerKm / 60);
+        return speedMetersPerMin / avgHr;
+      }
+
+      function predict10kSeconds(distanceKm, durationSec, goalKm = 10.0) {
+        if (!distanceKm || !durationSec || distanceKm < 1.5) return 0;
+        return Math.round(durationSec * Math.pow(goalKm / distanceKm, 1.06));
+      }
+
+      function getHrZoneThresholds(maxHr = 162, restingHr = 56) {
+        const mHr = Number.isFinite(maxHr) && maxHr > 100 ? maxHr : 162;
+        const rHr = Number.isFinite(restingHr) && restingHr >= 30 && restingHr < mHr - 20 ? restingHr : 56;
+        const hrr = mHr - rHr;
+        return {
+          z1Max: Math.round(rHr + 0.745 * hrr),
+          z2Max: Math.round(rHr + 0.850 * hrr),
+          z3Max: Math.round(rHr + 0.915 * hrr),
+          z4Max: Math.round(rHr + 0.962 * hrr)
+        };
+      }
+
+      function getHrZoneInfo(hr, maxHr = 162, restingHr = 56) {
+        const t = getHrZoneThresholds(maxHr, restingHr);
+        if (hr <= t.z1Max) return { zone: 1, name: 'Z1 Recovery', color: COLORS.cyan };
+        if (hr <= t.z2Max) return { zone: 2, name: 'Z2 Aerobic', color: COLORS.green };
+        if (hr <= t.z3Max) return { zone: 3, name: 'Z3 Tempo', color: COLORS.blue };
+        if (hr <= t.z4Max) return { zone: 4, name: 'Z4 Threshold', color: COLORS.purple };
+        return { zone: 5, name: 'Z5 Max/VO2', color: COLORS.red };
+      }
+
+      function getPeriodRuns() {
+        if (activePeriod === 'all' || allRuns.length === 0) return allRuns;
+        const days = parseInt(activePeriod, 10);
+        const latestDateStr = allRuns[allRuns.length - 1].run_date;
+        const latestMs = new Date(latestDateStr + 'T12:00:00').getTime();
+        const windowMs = days * 24 * 3600 * 1000;
+        return allRuns.filter(r => {
+          const ms = new Date(r.run_date + 'T12:00:00').getTime();
+          return latestMs - ms >= 0 && latestMs - ms <= windowMs;
+        });
+      }
+
+      function renderDashboard() {
+        const runs = getPeriodRuns();
+        const goalKm = parseFloat(settings.goal_distance_km) || 10.0;
+        const weeklyGoalKm = parseFloat(settings.weekly_goal_km) || 24.0;
+        const maxHr = parseInt(settings.max_hr, 10) || 162;
+        const restingHr = parseInt(settings.resting_hr, 10) || 56;
+
+        document.getElementById('dashHeaderGoalDist').textContent = `${goalKm.toFixed(1)} KM`;
+        document.getElementById('tileGoalKm').textContent = goalKm.toFixed(1);
+        document.getElementById('wideWeeklyGoalLabel').textContent = `WEEKLY GOAL: ${weeklyGoalKm.toFixed(1)} KM`;
+        document.getElementById('wideMaxHrLabel').textContent = `MAX HR: ${maxHr} BPM`;
+        document.getElementById('tileMaxHrConfig').textContent = `Max HR: ${maxHr} BPM`;
+        document.getElementById('tileTarget10kPace').textContent = `Target: ${settings.goal_target_pace || '5:20'}/km`;
+        document.getElementById('tileTarget10kDate').textContent = `Goal: ${formatShortDate(settings.goal_target_date)}`;
+
+        if (runs.length === 0) return;
+
+        const totalKm = runs.reduce((acc, r) => acc + Number(r.distance_km), 0);
+        const totalSec = runs.reduce((acc, r) => acc + Number(r.duration_sec), 0);
+        const weightedPaceSec = totalKm > 0 ? totalSec / totalKm : 0;
+        const avgSpeedKmh = totalSec > 0 ? totalKm / (totalSec / 3600) : 0;
+        const avgHr = Math.round(runs.reduce((acc, r) => acc + Number(r.avg_hr), 0) / runs.length);
+        const minHr = Math.min(...runs.map(r => Number(r.avg_hr)));
+        const maxHrObs = Math.max(...runs.map(r => Number(r.avg_hr)));
+
+        let longestRun = runs[0];
+        let fastestPaceRun = runs[0];
+        let slowestPaceRun = runs[0];
+        let longestDurationRun = runs[0];
+
+        for (const r of runs) {
+          if (Number(r.distance_km) > Number(longestRun.distance_km)) longestRun = r;
+          if (Number(r.pace_sec_per_km) < Number(fastestPaceRun.pace_sec_per_km)) fastestPaceRun = r;
+          if (Number(r.pace_sec_per_km) > Number(slowestPaceRun.pace_sec_per_km)) slowestPaceRun = r;
+          if (Number(r.duration_sec) > Number(longestDurationRun.duration_sec)) longestDurationRun = r;
+        }
+
+        const longestKm = Number(longestRun.distance_km);
+        const goalPct = Math.min(100, Math.round((longestKm / goalKm) * 100));
+        const remKm = Math.max(0, goalKm - longestKm);
+        const nextLongKm = longestKm >= goalKm ? goalKm : Math.min(goalKm, Math.round(longestKm * 1.1 * 10) / 10);
+
+        // Header Goal Strip
+        document.getElementById('dashHeaderGoalPct').textContent = `${goalPct}%`;
+        document.getElementById('dashHeaderGoalRem').textContent =
+          remKm <= 0 ? '10K GOAL UNLOCKED!' : `${remKm.toFixed(2)} km to 10K goal`;
+        document.getElementById('dashHeaderGoalFill').style.width = `${goalPct}%`;
+
+        // Rolling volumes (from allRuns relative to latest date)
+        const latestAllRun = allRuns[allRuns.length - 1];
+        const latestMs = new Date(latestAllRun.run_date + 'T12:00:00').getTime();
+        const dayMs = 24 * 3600 * 1000;
+
+        const r7 = allRuns.filter(r => (latestMs - new Date(r.run_date + 'T12:00:00').getTime()) <= 7 * dayMs);
+        const r14 = allRuns.filter(r => (latestMs - new Date(r.run_date + 'T12:00:00').getTime()) <= 14 * dayMs);
+        const r30 = allRuns.filter(r => (latestMs - new Date(r.run_date + 'T12:00:00').getTime()) <= 30 * dayMs);
+
+        const km7 = r7.reduce((a, r) => a + Number(r.distance_km), 0);
+        const km14 = r14.reduce((a, r) => a + Number(r.distance_km), 0);
+        const km30 = r30.reduce((a, r) => a + Number(r.distance_km), 0);
+
+        const readiness = Math.min(
+          100,
+          Math.round(
+            Math.min(1, longestKm / goalKm) * 60 +
+            Math.min(1, km7 / weeklyGoalKm) * 25 +
+            Math.min(1, allRuns.length / 10) * 15
+          )
+        );
+
+        // 1. TOTAL DISTANCE TILE
+        document.getElementById('tileRunsCountBadge').textContent = `${runs.length} RUNS`;
+        document.getElementById('tileTotalKm').textContent = totalKm.toFixed(2);
+        document.getElementById('tileAvgDistMeta').textContent = `Avg ${(totalKm / runs.length).toFixed(2)} KM per session`;
+        document.getElementById('tileFirstRunDate').textContent = `Start: ${formatShortDate(runs[0].run_date)}`;
+        document.getElementById('tileLastRunDate').textContent = `Latest: ${formatShortDate(runs[runs.length - 1].run_date)}`;
+
+        // 2. 10KM GOAL PROGRESS TILE
+        document.getElementById('tileReadinessBadge').textContent = `READINESS ${readiness}%`;
+        document.getElementById('tileLongestKm').textContent = longestKm.toFixed(2);
+        document.getElementById('tileGoalPctMeta').textContent = `${goalPct}% of ${goalKm.toFixed(1)} KM target (${formatShortDate(longestRun.run_date)})`;
+        document.getElementById('tileGoalBar').style.width = `${goalPct}%`;
+        document.getElementById('tileRemainingKm').textContent = remKm <= 0 ? 'Goal achieved!' : `${remKm.toFixed(2)} KM to go`;
+        document.getElementById('tileNextLongKm').textContent = `Next long: ${nextLongKm.toFixed(2)} KM`;
+
+        // 3. OVERALL AVG PACE TILE
+        document.getElementById('tileAvgSpeedBadge').textContent = `${avgSpeedKmh.toFixed(1)} KM/H`;
+        document.getElementById('tileAvgPace').textContent = formatPace(weightedPaceSec);
+        document.getElementById('tileBestPaceMeta').textContent = `Best pace: ${fastestPaceRun.pace_display}/km (${formatShortDate(fastestPaceRun.run_date)})`;
+        document.getElementById('tileSlowestPace').textContent = `Easy: ${slowestPaceRun.pace_display}/km`;
+        document.getElementById('tileFastestPace').textContent = `Peak: ${fastestPaceRun.pace_display}/km`;
+
+        // 4. AVG HEART RATE TILE
+        const avgZone = getHrZoneInfo(avgHr, maxHr, restingHr);
+        const avgEf = runs.reduce((a, r) => a + calcMetersPerBeat(r.pace_sec_per_km, r.avg_hr), 0) / runs.length;
+        document.getElementById('tileDomZoneBadge').textContent = avgZone.name.toUpperCase();
+        document.getElementById('tileAvgHr').textContent = String(avgHr);
+        document.getElementById('tileHrRangeMeta').textContent = `Range: ${minHr} – ${maxHrObs} BPM`;
+        document.getElementById('tileHrBar').style.width = `${Math.min(100, Math.round((avgHr / maxHr) * 100))}%`;
+        document.getElementById('tileAerobicEf').textContent = `Avg EF: ${avgEf.toFixed(2)} m/b`;
+
+        // 5. TOTAL RUN TIME TILE
+        const totalMins = Math.round(totalSec / 60);
+        const avgSessionSec = Math.round(totalSec / runs.length);
+        const estKcal = Math.round(totalKm * 65);
+        document.getElementById('tileTotalMinsBadge').textContent = `${totalMins} MINS`;
+        document.getElementById('tileTotalTime').textContent = formatTotalHours(totalSec);
+        document.getElementById('tileAvgDurationMeta').textContent = `Avg ${formatDuration(avgSessionSec)} per session`;
+        document.getElementById('tileLongestDuration').textContent = `Max: ${formatDuration(longestDurationRun.duration_sec)}`;
+        document.getElementById('tileTotalCalories').textContent = `~${estKcal.toLocaleString()} kcal`;
+
+        // 6. FASTEST 5K RECORD TILE
+        const runs5kPlus = runs.filter(r => Number(r.distance_km) >= 5.0);
+        document.getElementById('tile5kCountBadge').textContent = `${runs5kPlus.length}x 5K+ RUNS`;
+        if (runs5kPlus.length > 0) {
+          let best5k = runs5kPlus[0];
+          for (const r of runs5kPlus) {
+            if (Number(r.pace_sec_per_km) < Number(best5k.pace_sec_per_km)) best5k = r;
+          }
+          const fiveKSec = Math.round(5.0 * Number(best5k.pace_sec_per_km));
+          document.getElementById('tileFastest5k').textContent = formatDuration(fiveKSec);
+          document.getElementById('tileFastest5kMeta').textContent = `5.00 KM split @ ${best5k.pace_display}/km`;
+          document.getElementById('tileFastest5kDate').textContent = `Date: ${formatShortDate(best5k.run_date)}`;
+          document.getElementById('tileFastest5kFull').textContent = `${Number(best5k.distance_km).toFixed(2)}k in ${formatDuration(best5k.duration_sec)}`;
+        } else {
+          document.getElementById('tileFastest5k').textContent = '--:--';
+          document.getElementById('tileFastest5kMeta').textContent = 'No runs >= 5.0 KM in period';
+          document.getElementById('tileFastest5kDate').textContent = 'Date: --';
+          document.getElementById('tileFastest5kFull').textContent = 'Full run: --';
+        }
+
+        // 7. PROJECTED 10K FINISH TILE
+        const qualRuns = runs.filter(r => Number(r.distance_km) >= 3.0);
+        const predPool = qualRuns.length > 0 ? qualRuns : runs;
+        const bestPredSec = Math.min(...predPool.map(r => predict10kSeconds(Number(r.distance_km), Number(r.duration_sec), goalKm)));
+        const predPaceSec = bestPredSec / goalKm;
+        document.getElementById('tile10kPaceBadge').textContent = `${formatPace(predPaceSec)}/KM`;
+        document.getElementById('tilePred10k').textContent = formatDuration(bestPredSec);
+        document.getElementById('tilePred10kMeta').textContent = `Projected @ ${formatPace(predPaceSec)}/km pace`;
+
+        // 8. LATEST RUN TILE
+        const latest = runs[runs.length - 1];
+        const latestEf = calcMetersPerBeat(latest.pace_sec_per_km, latest.avg_hr);
+        const latestPct = Math.min(100, Math.round((Number(latest.distance_km) / goalKm) * 100));
+        document.getElementById('tileLatestDateBadge').textContent = formatShortDate(latest.run_date).toUpperCase();
+        document.getElementById('tileLatestKm').textContent = Number(latest.distance_km).toFixed(2);
+        document.getElementById('tileLatestPaceHrMeta').textContent = `${latest.pace_display}/km • ${latest.avg_hr} BPM`;
+        document.getElementById('tileLatestBar').style.width = `${latestPct}%`;
+        document.getElementById('tileLatestDuration').textContent = `Time: ${formatDuration(latest.duration_sec)}`;
+        document.getElementById('tileLatestEf').textContent = `EF: ${latestEf.toFixed(2)} m/b`;
+
+        // BOTTOM 1: ROLLING VOLUMES
+        document.getElementById('vol7dKm').innerHTML = `${km7.toFixed(1)} <small style="font-size:11px">KM</small>`;
+        document.getElementById('vol7dRuns').textContent = `${r7.length} runs (${Math.round((km7 / weeklyGoalKm) * 100)}% of goal)`;
+        document.getElementById('vol14dKm').innerHTML = `${km14.toFixed(1)} <small style="font-size:11px">KM</small>`;
+        document.getElementById('vol14dRuns').textContent = `${r14.length} runs logged`;
+        document.getElementById('vol30dKm').innerHTML = `${km30.toFixed(1)} <small style="font-size:11px">KM</small>`;
+        document.getElementById('vol30dRuns').textContent = `${r30.length} runs logged`;
+
+        // BOTTOM 2: HR ZONES STACKED BAR & BIG PILLS
+        const t = getHrZoneThresholds(maxHr, restingHr);
+        const zoneDefs = [
+          { zone: 1, short: 'Z1', range: `<${t.z1Max + 1}`, color: COLORS.cyan, count: 0 },
+          { zone: 2, short: 'Z2', range: `${t.z1Max + 1}-${t.z2Max}`, color: COLORS.green, count: 0 },
+          { zone: 3, short: 'Z3', range: `${t.z2Max + 1}-${t.z3Max}`, color: COLORS.blue, count: 0 },
+          { zone: 4, short: 'Z4', range: `${t.z3Max + 1}-${t.z4Max}`, color: COLORS.purple, count: 0 },
+          { zone: 5, short: 'Z5', range: `${t.z4Max + 1}+`, color: COLORS.red, count: 0 }
+        ];
+        for (const r of runs) {
+          const z = getHrZoneInfo(Number(r.avg_hr), maxHr, restingHr).zone;
+          zoneDefs[z - 1].count++;
+        }
+
+        const exact = zoneDefs.map(z => (z.count / runs.length) * 100);
+        const pcts = exact.map(v => Math.floor(v));
+        let rem = 100 - pcts.reduce((a, b) => a + b, 0);
+        const order = exact.map((v, i) => ({ i, f: v - pcts[i] })).sort((a, b) => b.f - a.f);
+        for (let k = 0; k < rem; k++) pcts[order[k].i]++;
+
+        document.getElementById('stackedZoneBar').innerHTML = zoneDefs
+          .map((z, i) => pcts[i] > 0 ? `<div class="stacked-seg" style="width:${pcts[i]}%; background:${z.color}"></div>` : '')
+          .join('');
+
+        document.getElementById('zoneBigGrid').innerHTML = zoneDefs
+          .map((z, i) => `
+            <div class="zone-big-item">
+              <span class="zb-name" style="color:${z.color}">${z.short}</span>
+              <span class="zb-pct" style="color:${pcts[i] > 0 ? 'var(--text-bright)' : 'var(--text-muted)'}">${pcts[i]}%</span>
+              <span class="zb-bpm">${z.range}</span>
+            </div>
+          `)
+          .join('');
+
+        // BOTTOM 3: RECENT 10 RUNS SKYLINE
+        const recent10 = runs.slice(-10);
+        const maxSkyKm = Math.max(goalKm, ...recent10.map(r => Number(r.distance_km)));
+        const goalLineBottomPct = Math.min(95, Math.round((goalKm / maxSkyKm) * 82));
+
+        document.getElementById('skylineStage').innerHTML = `
+          <div class="skyline-goal-line" style="bottom: ${goalLineBottomPct}%">
+            <span class="skyline-goal-tag">${goalKm.toFixed(0)}K GOAL</span>
+          </div>
+          ${recent10
+            .map(r => {
+              const km = Number(r.distance_km);
+              const hPct = Math.max(8, Math.round((km / maxSkyKm) * 82));
+              return `
+                <div class="skyline-col" title="${r.run_date}: ${km.toFixed(2)} KM @ ${r.pace_display}/km (${r.avg_hr} BPM)">
+                  <span class="skyline-val">${km.toFixed(1)}</span>
+                  <div class="skyline-bar" style="height: ${hPct}%"></div>
+                </div>
+              `;
+            })
+            .join('')}
+        `;
+
+        document.getElementById('skylineDatesRow').innerHTML = recent10
+          .map(r => `<span>${formatShortDate(r.run_date)}</span>`)
+          .join('');
+      }
+
+      document.getElementById('dashPeriodTabs').addEventListener('click', e => {
+        const btn = e.target.closest('.seg-btn');
+        if (!btn) return;
+        activePeriod = btn.dataset.period;
+        document.querySelectorAll('#dashPeriodTabs .seg-btn').forEach(b => b.classList.toggle('active', b === btn));
+        renderDashboard();
+      });
+
+      async function init() {
+        try {
+          const res = await fetch('/api/state');
+          const data = await res.json();
+          allRuns = data.runs || [];
+          settings = { ...settings, ...(data.settings || {}) };
+        } catch (err) {
+          const cached = localStorage.getItem('stride_backup_state');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            allRuns = parsed.runs || [];
+            settings = { ...settings, ...(parsed.settings || {}) };
+          }
+        }
+        renderDashboard();
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>

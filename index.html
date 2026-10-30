@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="tokyo-night">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a1b26" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="description" content="10KM Running Progress & Telemetry Tracker with SQLite3 and uPlot" />
+  <title>mmcRUN — Run Telemetry</title>
+
+  <!-- Icons & PWA Manifest -->
+  <link rel="icon" type="image/x-icon" href="/icons/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+  <link rel="manifest" href="/manifest.json" />
+
+  <!-- Preload Crisp JetBrains Mono Fonts -->
+  <link rel="preload" href="/fonts/JetBrainsMono-Regular.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/JetBrainsMono-Medium.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/JetBrainsMono-SemiBold.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/JetBrainsMono-Bold.woff2" as="font" type="font/woff2" crossorigin />
+
+  <!-- uPlot Styles & App Styles -->
+  <link rel="stylesheet" href="/vendor/uPlot.min.css" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <!-- TOP TELEMETRY BAR -->
+    <header class="topbar">
+      <div class="brand-group">
+        <img src="/icons/favicon-32x32.png" alt="mmcRUN" class="brand-icon" width="24" height="24" />
+        <div class="brand-title-wrap">
+          <h1 class="brand-title"><span class="accent-slash">mmc</span>RUN</h1>
+          <span class="brand-subtitle">RUN TELEMETRY</span>
+        </div>
+      </div>
+
+      <!-- 10KM GOAL LIVE HEADER PROGRESS -->
+      <div class="header-goal-strip" id="headerGoalStrip" title="Click to configure 10KM Goal Settings">
+        <div class="header-goal-labels">
+          <span class="goal-tag">TARGET: <strong id="headerGoalDist">10.0 KM</strong></span>
+          <span class="goal-pct" id="headerGoalPct">0%</span>
+          <span class="goal-sub" id="headerGoalRemaining">10.00 km to go</span>
+        </div>
+        <div class="header-goal-bar-track">
+          <div class="header-goal-bar-fill" id="headerGoalFill" style="width: 0%"></div>
+          <div class="milestone-tick" style="left: 25%" title="2.5 KM"></div>
+          <div class="milestone-tick" style="left: 50%" title="5.0 KM"></div>
+          <div class="milestone-tick" style="left: 75%" title="7.5 KM"></div>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <span class="db-status" id="dbStatusBadge" title="SQLite3 Persistent Storage Active">
+          <span class="status-dot"></span>
+          <span id="dbStatusText">SQLITE3 SYNCED</span>
+        </span>
+        <a href="/coach" class="btn btn-ghost btn-sm" style="text-decoration: none; color: var(--tn-purple); border-color: rgba(187, 154, 247, 0.35);" title="Open Gemini AI Run Coach">
+          AI COACH
+        </a>
+        <a href="/dashboard" class="btn btn-ghost btn-sm" style="text-decoration: none;" title="Open Full-Window Big Stats Dashboard">
+          DASHBOARD
+        </a>
+        <button type="button" class="btn btn-ghost btn-sm" id="btnOpenBatchModal" title="Add multiple past runs at once">
+          + PAST RUNS
+        </button>
+        <button type="button" class="btn btn-ghost btn-sm" id="btnOpenGoalModal" title="Configure 10KM Training Goal & HR Zones">
+          10K CONFIG
+        </button>
+      </div>
+    </header>
+
+    <!-- DEMO DATA NOTICE BANNER (shown only when demo runs exist) -->
+    <div class="demo-banner hidden" id="demoBanner">
+      <div class="demo-banner-text">
+        <span class="badge badge-cyan">DEMO TELEMETRY</span>
+        <span>Showing sample 10KM training block runs so you can explore the uPlot graphs immediately.</span>
+      </div>
+      <div class="demo-banner-actions">
+        <button type="button" class="btn btn-xs btn-danger-outline" id="btnClearDemoRuns">Clear Demo Runs</button>
+      </div>
+    </div>
+
+    <!-- MAIN FULL-VIEWPORT WORKSPACE -->
+    <main class="workspace" id="workspace">
+      <!-- LEFT PANEL: RUN LOGGER + 10K TRAINING READINESS -->
+      <section class="panel panel-left" data-mobile-view="log">
+        <!-- LOG A RUN / EDIT RUN FORM -->
+        <div class="card card-form">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-indicator indicator-blue"></span>
+              <h2 class="card-title" id="formTitle">LOG RUN TELEMETRY</h2>
+            </div>
+            <button type="button" class="btn btn-xs btn-ghost hidden" id="btnCancelEdit">CANCEL EDIT</button>
+          </div>
+
+          <form id="runForm" class="run-form" autocomplete="off">
+            <input type="hidden" id="editRunId" value="" />
+
+            <div class="form-row-2">
+              <div class="field">
+                <label for="inputDate">RUN DATE</label>
+                <input type="date" id="inputDate" required />
+              </div>
+              <div class="field">
+                <label for="inputType">SESSION TYPE</label>
+                <select id="inputType">
+                  <option value="easy">Easy / Aerobic</option>
+                  <option value="long">Long Run (10K)</option>
+                  <option value="tempo">Tempo / Threshold</option>
+                  <option value="intervals">Intervals / Speed</option>
+                  <option value="recovery">Recovery</option>
+                  <option value="race">Race / Time Trial</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row-3">
+              <div class="field">
+                <label for="inputDistance">
+                  <span>DIST</span>
+                  <span class="unit-badge unit-blue">KM</span>
+                </label>
+                <input
+                  type="number"
+                  id="inputDistance"
+                  step="0.01"
+                  min="0.1"
+                  max="250"
+                  placeholder="5.00"
+                  inputmode="decimal"
+                  required
+                />
+                <div class="field-sub" id="liveDistPreview">Goal: 10.0 KM</div>
+              </div>
+
+              <div class="field">
+                <label for="inputPace">
+                  <span>PACE</span>
+                  <span class="unit-badge unit-purple">/KM</span>
+                </label>
+                <input
+                  type="text"
+                  id="inputPace"
+                  placeholder="5:30"
+                  pattern="^[0-9]{1,2}(:[0-5][0-9]|\.[0-9]{1,2})?$"
+                  title="Enter pace as MM:SS (e.g. 5:30) or decimal minutes"
+                  required
+                />
+                <div class="field-sub" id="liveSpeedPreview">MM:SS (e.g. 5:30)</div>
+              </div>
+
+              <div class="field">
+                <label for="inputHr">
+                  <span>AVG HR</span>
+                  <span class="unit-badge unit-red">BPM</span>
+                </label>
+                <input
+                  type="number"
+                  id="inputHr"
+                  step="1"
+                  min="40"
+                  max="230"
+                  placeholder="160"
+                  inputmode="numeric"
+                  required
+                />
+                <div class="field-sub" id="liveHrZonePreview">BPM (e.g. 155)</div>
+              </div>
+            </div>
+
+            <!-- FULL-WIDTH QUICK DISTANCE PRESETS -->
+            <div class="preset-bar">
+              <span class="preset-label">QUICK KM:</span>
+              <div class="quick-chips" id="distanceQuickChips">
+                <button type="button" class="chip" data-dist="3.0">3.0 KM</button>
+                <button type="button" class="chip" data-dist="5.0">5.0 KM</button>
+                <button type="button" class="chip" data-dist="7.5">7.5 KM</button>
+                <button type="button" class="chip" data-dist="10.0">10.0 KM</button>
+              </div>
+            </div>
+
+            <!-- LIVE COMPUTED TELEMETRY PREVIEW -->
+            <div class="live-calc-strip" id="liveCalcStrip">
+              <div class="calc-item">
+                <span class="calc-label">EST. TIME</span>
+                <span class="calc-val" id="calcDuration">--:--</span>
+              </div>
+              <div class="calc-item">
+                <span class="calc-label">10K GOAL %</span>
+                <span class="calc-val text-green" id="calcGoalPct">--%</span>
+              </div>
+              <div class="calc-item">
+                <span class="calc-label">EFFICIENCY</span>
+                <span class="calc-val text-cyan" id="calcEfficiency">-- m/b</span>
+              </div>
+              <div class="calc-item">
+                <span class="calc-label">10K EQUIV</span>
+                <span class="calc-val text-purple" id="calc10kPredictor">--:--</span>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="inputNotes">
+                <span>RUN NOTES</span>
+                <span class="label-hint">OPTIONAL</span>
+              </label>
+              <input
+                type="text"
+                id="inputNotes"
+                maxlength="160"
+                placeholder="How did it feel? Weather, splits, shoes..."
+              />
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block" id="btnSubmitRun">
+              <span id="btnSubmitText">SAVE RUN</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- 10KM TRAINING MISSION CONTROL CARD -->
+        <div class="card card-goal-mission" data-mobile-view="goal">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-indicator indicator-green"></span>
+              <h2 class="card-title">10KM TRAINING MISSION</h2>
+            </div>
+            <span class="badge badge-green" id="readinessBadge">READINESS: --%</span>
+          </div>
+
+          <div class="mission-grid">
+            <div class="mission-stat">
+              <div class="mission-top">
+                <span class="mission-label">LONGEST RUN</span>
+                <span class="mission-tag text-blue" id="missionLongestPctTag">0%</span>
+              </div>
+              <div class="mission-hero">
+                <div class="mission-val-row">
+                  <span class="mission-val text-blue" id="missionLongestKm">0.00</span>
+                  <span class="mission-unit">KM</span>
+                </div>
+                <div class="mission-meta" id="missionTargetMeta">Target: <span id="missionTargetKm">10.0</span> KM</div>
+              </div>
+              <div class="mission-bottom">
+                <div class="mini-progress">
+                  <div class="mini-progress-fill bg-blue" id="missionLongestBar" style="width: 0%"></div>
+                </div>
+                <div class="mission-sub" id="missionDistanceLeft">10.00 KM to go</div>
+              </div>
+            </div>
+
+            <div class="mission-stat">
+              <div class="mission-top">
+                <span class="mission-label">EST. 10K TIME</span>
+                <span class="mission-tag text-purple" id="missionPredPaceTag">10K</span>
+              </div>
+              <div class="mission-hero">
+                <div class="mission-val-row">
+                  <span class="mission-val mission-val-time text-purple" id="missionPred10kTime">--:--</span>
+                </div>
+                <div class="mission-meta" id="missionPredMeta">Pace: --:-- /km</div>
+              </div>
+              <div class="mission-bottom">
+                <div class="mini-progress">
+                  <div class="mini-progress-fill bg-purple" id="missionPredBar" style="width: 0%"></div>
+                </div>
+                <div class="mission-sub" id="missionPred10kPace">Riegel formula</div>
+              </div>
+            </div>
+
+            <div class="mission-stat">
+              <div class="mission-top">
+                <span class="mission-label">7-DAY VOLUME</span>
+                <span class="mission-tag text-cyan" id="missionWeeklyPctTag">0%</span>
+              </div>
+              <div class="mission-hero">
+                <div class="mission-val-row">
+                  <span class="mission-val text-cyan" id="missionWeeklyKm">0.0</span>
+                  <span class="mission-unit">KM</span>
+                </div>
+                <div class="mission-meta">Goal: <span id="missionWeeklyGoal">24.0</span> KM</div>
+              </div>
+              <div class="mission-bottom">
+                <div class="mini-progress">
+                  <div class="mini-progress-fill bg-cyan" id="missionWeeklyBar" style="width: 0%"></div>
+                </div>
+                <div class="mission-sub" id="missionWeeklySub">Weekly target</div>
+              </div>
+            </div>
+
+            <div class="mission-stat">
+              <div class="mission-top">
+                <span class="mission-label">NEXT LONG RUN</span>
+                <span class="mission-tag text-green" id="missionNextPctTag">+10%</span>
+              </div>
+              <div class="mission-hero">
+                <div class="mission-val-row">
+                  <span class="mission-val text-green" id="missionNextLongRun">3.50</span>
+                  <span class="mission-unit">KM</span>
+                </div>
+                <div class="mission-meta" id="missionNextMeta">Step-up target</div>
+              </div>
+              <div class="mission-bottom">
+                <div class="mini-progress">
+                  <div class="mini-progress-fill bg-green" id="missionNextBar" style="width: 0%"></div>
+                </div>
+                <div class="mission-sub" id="missionNextTip">+10% safe build</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 10K MILESTONE LADDER -->
+          <div class="milestone-ladder" id="milestoneLadder">
+            <div class="milestone-step" data-km="2.5">
+              <span class="ms-dot"></span>
+              <span class="ms-km">2.5K</span>
+              <span class="ms-status">Starter</span>
+            </div>
+            <div class="milestone-step" data-km="5.0">
+              <span class="ms-dot"></span>
+              <span class="ms-km">5.0K</span>
+              <span class="ms-status">Halfway</span>
+            </div>
+            <div class="milestone-step" data-km="7.5">
+              <span class="ms-dot"></span>
+              <span class="ms-km">7.5K</span>
+              <span class="ms-status">Endurance</span>
+            </div>
+            <div class="milestone-step" data-km="10.0">
+              <span class="ms-dot"></span>
+              <span class="ms-km">10.0K</span>
+              <span class="ms-status">GOAL</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CENTER PANEL: KPI TELEMETRY STRIP + FULL-SPACE UPLOT GRAPH -->
+      <section class="panel panel-center" data-mobile-view="dashboard">
+        <!-- 6-KPI TELEMETRY STRIP -->
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <span class="kpi-label">TOTAL KM</span>
+              <span class="kpi-dot bg-blue"></span>
+            </div>
+            <div class="kpi-value text-blue" id="kpiTotalKm">0.00 <small>KM</small></div>
+            <div class="kpi-foot" id="kpiTotalRuns">0 runs logged</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <span class="kpi-label">AVG PACE</span>
+              <span class="kpi-dot bg-purple"></span>
+            </div>
+            <div class="kpi-value text-purple" id="kpiAvgPace">--:-- <small>/KM</small></div>
+            <div class="kpi-foot" id="kpiBestPace">Best --:--/km</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <span class="kpi-label">AVG HR</span>
+              <span class="kpi-dot bg-red"></span>
+            </div>
+            <div class="kpi-value text-red" id="kpiAvgHr">--- <small>BPM</small></div>
+            <div class="kpi-foot" id="kpiHrRange">-- to -- bpm</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <span class="kpi-label">LONGEST</span>
+              <span class="kpi-dot bg-green"></span>
+            </div>
+            <div class="kpi-value text-green" id="kpiLongestRun">0.00 <small>KM</small></div>
+            <div class="kpi-foot" id="kpiLongestDate">Goal 10.0 KM</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <span class="kpi-label">AEROBIC EF</span>
+              <span class="kpi-dot bg-cyan"></span>
+            </div>
+            <div class="kpi-value text-cyan" id="kpiEfficiency">-- <small>M/B</small></div>
+            <div class="kpi-foot" id="kpiEfficiencyTrend">Meters/beat</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <span class="kpi-label">RUN TIME</span>
+              <span class="kpi-dot bg-orange"></span>
+            </div>
+            <div class="kpi-value text-orange" id="kpiTotalTime">0h 00m</div>
+            <div class="kpi-foot" id="kpiAvgSpeed">Avg 0.0 km/h</div>
+          </div>
+        </div>
+
+        <!-- UPLOT MAIN GRAPH CARD (EXPANDS TO FILL ALL AVAILABLE SPACE) -->
+        <div class="card card-chart">
+          <div class="chart-header">
+            <div class="chart-title-wrap">
+              <span class="card-indicator indicator-purple"></span>
+              <h2 class="card-title">RUN TELEMETRY &amp; 10KM PROGRESSION</h2>
+            </div>
+
+            <div class="chart-controls">
+              <div class="segmented-control" id="chartModeTabs" role="tablist">
+                <button type="button" class="seg-btn active" data-mode="combined">ALL METRICS</button>
+                <button type="button" class="seg-btn" data-mode="distance">10K DISTANCE</button>
+                <button type="button" class="seg-btn" data-mode="pace_hr">PACE vs HR</button>
+                <button type="button" class="seg-btn" data-mode="efficiency">AEROBIC EF</button>
+              </div>
+
+              <div class="segmented-control" id="chartRangeTabs">
+                <button type="button" class="seg-btn" data-range="7">LAST 7</button>
+                <button type="button" class="seg-btn" data-range="15">LAST 15</button>
+                <button type="button" class="seg-btn active" data-range="all">ALL RUNS</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- LIVE HOVER TELEMETRY READOUT -->
+          <div class="chart-readout" id="chartReadout">
+            <div class="readout-item">
+              <span class="ro-label">DATE</span>
+              <span class="ro-val" id="roDate">--</span>
+            </div>
+            <div class="readout-item">
+              <span class="ro-dot bg-blue"></span>
+              <span class="ro-label">DIST</span>
+              <span class="ro-val text-blue" id="roDist">-- KM</span>
+            </div>
+            <div class="readout-item">
+              <span class="ro-dot bg-purple"></span>
+              <span class="ro-label">PACE</span>
+              <span class="ro-val text-purple" id="roPace">--:-- /KM</span>
+            </div>
+            <div class="readout-item">
+              <span class="ro-dot bg-red"></span>
+              <span class="ro-label">AVG HR</span>
+              <span class="ro-val text-red" id="roHr">-- BPM</span>
+            </div>
+            <div class="readout-item">
+              <span class="ro-dot bg-cyan"></span>
+              <span class="ro-label">TIME</span>
+              <span class="ro-val text-cyan" id="roTime">--:--</span>
+            </div>
+            <div class="readout-item">
+              <span class="ro-dot bg-green"></span>
+              <span class="ro-label">10K GOAL</span>
+              <span class="ro-val text-green" id="roGoalPct">--%</span>
+            </div>
+          </div>
+
+          <!-- UPLOT CANVAS CONTAINER -->
+          <div class="uplot-stage" id="uplotStage">
+            <div id="uplotContainer" class="uplot-container"></div>
+            <div class="chart-empty-state hidden" id="chartEmptyState">
+              <p>No runs logged yet.</p>
+              <div class="empty-actions">
+                <button type="button" class="btn btn-sm btn-primary" id="btnSeedFromEmpty">Load Sample 10K Training Data</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT PANEL: HR ZONES + RUN HISTORY TABLE -->
+      <section class="panel panel-right" data-mobile-view="history">
+        <!-- HEART RATE ZONE DISTRIBUTION & PERSONAL RECORDS -->
+        <div class="card card-zones">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-indicator indicator-red"></span>
+              <h2 class="card-title">HR ZONES &amp; PERSONAL RECORDS</h2>
+            </div>
+            <span class="text-muted text-xs" id="maxHrLabel">MAX HR: 162</span>
+          </div>
+
+          <div class="pr-badges-row" id="prBadgesRow">
+            <div class="pr-pill" id="prFastest5kPill" title="Fastest 5.0 KM time from runs >= 5 KM">
+              <span class="pr-pill-label">FASTEST 5K</span>
+              <span class="pr-pill-val text-purple" id="prFastest5k">--:--</span>
+              <span class="pr-pill-sub" id="prFastest5kSub">Runs &ge; 5.0 km</span>
+            </div>
+            <div class="pr-pill" id="prBestPacePill" title="Fastest average pace across all runs">
+              <span class="pr-pill-label">BEST PACE</span>
+              <span class="pr-pill-val text-cyan" id="prBestPace">--:--/km</span>
+              <span class="pr-pill-sub" id="prBestPaceSub">All distances</span>
+            </div>
+            <div class="pr-pill" id="prBestEfPill" title="Highest meters traveled per heartbeat">
+              <span class="pr-pill-label">BEST AEROBIC EF</span>
+              <span class="pr-pill-val text-green" id="prBestEf">-- m/b</span>
+              <span class="pr-pill-sub" id="prBestEfSub">Meters / beat</span>
+            </div>
+          </div>
+
+          <div class="zones-bars" id="zonesBars">
+            <!-- Dynamically populated Z1 - Z5 distribution -->
+          </div>
+        </div>
+
+        <!-- RUN LOG HISTORY (PAST & RECENT RUNS) -->
+        <div class="card card-history">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-indicator indicator-cyan"></span>
+              <h2 class="card-title">RUN LOG HISTORY</h2>
+              <span class="count-pill" id="historyCountPill">0</span>
+            </div>
+            <div class="history-controls">
+              <select id="filterTypeSelect" class="select-xs" aria-label="Filter runs by session type">
+                <option value="all">All Types</option>
+                <option value="easy">Easy</option>
+                <option value="long">Long Run</option>
+                <option value="tempo">Tempo</option>
+                <option value="intervals">Intervals</option>
+                <option value="recovery">Recovery</option>
+                <option value="race">Race</option>
+              </select>
+              <button type="button" class="btn btn-xs btn-ghost" id="btnExportJson" title="Export runs to JSON">EXPORT</button>
+            </div>
+          </div>
+
+          <div class="history-list-wrap" id="historyListWrap">
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th class="col-date">DATE</th>
+                  <th class="col-dist">DIST</th>
+                  <th class="col-pace">PACE</th>
+                  <th class="col-hr">HR</th>
+                  <th class="col-time">TIME</th>
+                  <th class="col-actions">ACT</th>
+                </tr>
+              </thead>
+              <tbody id="historyTableBody">
+                <!-- Populated by app.js -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- MOBILE BOTTOM NAVIGATION BAR (VISIBLE ON MOBILE SCREENS) -->
+    <nav class="mobile-nav" id="mobileNav" aria-label="Mobile Navigation">
+      <button type="button" class="mobile-nav-btn active" data-target="dashboard">
+        <span class="nav-icon">&#9638;</span>
+        <span class="nav-label">CHARTS &amp; STATS</span>
+      </button>
+      <button type="button" class="mobile-nav-btn" data-target="log">
+        <span class="nav-icon">&#43;</span>
+        <span class="nav-label">LOG RUN</span>
+      </button>
+      <button type="button" class="mobile-nav-btn" data-target="goal">
+        <span class="nav-icon">&#9733;</span>
+        <span class="nav-label">10K GOAL</span>
+      </button>
+      <button type="button" class="mobile-nav-btn" data-target="history">
+        <span class="nav-icon">&#9776;</span>
+        <span class="nav-label">HISTORY</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- MODAL: BATCH ADD PAST RUNS / IMPORT -->
+  <div class="modal-backdrop hidden" id="batchModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">BATCH ADD PAST RUNS</h3>
+        <button type="button" class="btn btn-xs btn-ghost" id="btnCloseBatchModal">&times; CLOSE</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">
+          Quickly enter multiple past training runs at once. Enter one run per line in the format:
+          <code>YYYY-MM-DD, Distance(KM), Pace(MM:SS), AvgHR, [Type], [Notes]</code>
+        </p>
+        <div class="batch-example">
+          Example:<br />
+          <code>2026-10-02, 4.5, 5:45, 158, easy, Morning loop</code><br />
+          <code>2026-10-05, 6.2, 5:50, 162, long, Felt strong</code>
+        </div>
+        <textarea
+          id="batchTextarea"
+          rows="7"
+          class="batch-textarea"
+          placeholder="2026-10-12, 5.0, 5:40, 160, easy, Past run 1&#10;2026-10-15, 6.5, 5:48, 164, long, Past run 2"
+        ></textarea>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost btn-sm" id="btnLoadSampleData">Reset to Sample 10K Block</button>
+          <div class="modal-actions-right">
+            <button type="button" class="btn btn-primary btn-sm" id="btnSaveBatchRuns">IMPORT PAST RUNS TO SQLITE3</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: 10KM TRAINING GOAL & HR SETTINGS -->
+  <div class="modal-backdrop hidden" id="goalModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">10KM GOAL &amp; PHYSIOLOGY SETTINGS</h3>
+        <button type="button" class="btn btn-xs btn-ghost" id="btnCloseGoalModal">&times; CLOSE</button>
+      </div>
+      <form id="goalSettingsForm" class="modal-body">
+        <div class="form-row-2">
+          <div class="field">
+            <label for="settingGoalKm">GOAL DISTANCE (KM)</label>
+            <input type="number" id="settingGoalKm" step="0.1" min="1" max="100" value="10.0" required />
+          </div>
+          <div class="field">
+            <label for="settingTargetPace">TARGET 10K PACE (/KM)</label>
+            <input type="text" id="settingTargetPace" placeholder="5:20" value="5:20" required />
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div class="field">
+            <label for="settingWeeklyKm">WEEKLY VOLUME GOAL (KM)</label>
+            <input type="number" id="settingWeeklyKm" step="0.5" min="1" max="300" value="24.0" required />
+          </div>
+          <div class="field">
+            <label for="settingTargetDate">TARGET 10K DATE</label>
+            <input type="date" id="settingTargetDate" value="2026-12-06" />
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div class="field">
+            <label for="settingMaxHr">MAX HEART RATE (BPM)</label>
+            <input type="number" id="settingMaxHr" step="1" min="120" max="230" value="162" required />
+          </div>
+          <div class="field">
+            <label for="settingRestingHr">RESTING HEART RATE (BPM)</label>
+            <input type="number" id="settingRestingHr" step="1" min="30" max="110" value="56" required />
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-danger-outline btn-sm" id="btnClearAllRuns">Delete All Runs</button>
+          <button type="submit" class="btn btn-primary btn-sm">SAVE SETTINGS TO SQLITE3</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="/vendor/uPlot.iife.min.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

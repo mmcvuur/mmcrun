@@ -1,0 +1,12 @@
+{
+  "name": "mmcrun",
+  "version": "1.0.0",
+  "description": "Running Progress & Statistics Tracker",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "Engine": {
+    "node": ">=22.5.0"
+  }
+}
