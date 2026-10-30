@@ -100,7 +100,23 @@ db.exec(`
     model TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS shoes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    start_date TEXT NOT NULL DEFAULT '2026-11-01',
+    max_distance_km REAL NOT NULL DEFAULT 650,
+    initial_km REAL NOT NULL DEFAULT 0,
+    is_default INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
 `);
+
+try {
+  db.exec('ALTER TABLE runs ADD COLUMN shoe_id INTEGER DEFAULT NULL');
+} catch (_) {
+  // shoe_id column already exists
+}
 
 const defaultSettings = {
   goal_distance_km: '10.0',
@@ -129,6 +145,19 @@ for (const [k, v] of Object.entries(defaultSettings)) {
       setEnvApiKey(legacyKey);
     }
     db.prepare("DELETE FROM settings WHERE key = 'gemini_api_key'").run();
+  }
+
+  // One-time initial seed for the new ASICS shoes starting Sunday (2026-11-01)
+  const shoesSeededRow = db.prepare("SELECT value FROM settings WHERE key = 'shoes_seeded'").get();
+  if (!shoesSeededRow) {
+    const countShoes = db.prepare('SELECT COUNT(*) as count FROM shoes').get();
+    if (countShoes.count === 0) {
+      db.prepare(`
+        INSERT INTO shoes (name, start_date, max_distance_km, initial_km, is_default)
+        VALUES ('ASICS', '2026-11-01', 650, 0, 1)
+      `).run();
+    }
+    db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('shoes_seeded', '1')").run();
   }
 })();
 
@@ -267,17 +296,26 @@ function getRawSettings() {
   return settings;
 }
 
+function getShoes() {
+  return db.prepare(`
+    SELECT id, name, start_date, max_distance_km, initial_km, is_default, created_at
+    FROM shoes
+    ORDER BY is_default DESC, id ASC
+  `).all();
+}
+
 function getAllRunsAndSettings() {
   const runs = db.prepare(`
-    SELECT id, run_date, distance_km, pace_sec_per_km, pace_display, avg_hr, duration_sec, run_type, notes, is_demo, created_at
+    SELECT id, run_date, distance_km, pace_sec_per_km, pace_display, avg_hr, duration_sec, run_type, notes, shoe_id, is_demo, created_at
     FROM runs
     ORDER BY run_date ASC, id ASC
   `).all();
 
   const rawSettings = getRawSettings();
-  const { gemini_api_key, ...publicSettings } = rawSettings;
+  const { gemini_api_key, shoes_seeded, ...publicSettings } = rawSettings;
+  const shoes = getShoes();
 
-  return { runs, settings: publicSettings };
+  return { runs, settings: publicSettings, shoes };
 }
 
 function maskApiKey(key) {
@@ -435,9 +473,11 @@ const server = http.createServer(async (req, res) => {
       const body = await readJsonBody(req);
       const items = Array.isArray(body.runs) ? body.runs : [body];
 
+      const defaultShoe = db.prepare('SELECT id, start_date FROM shoes WHERE is_default = 1 LIMIT 1').get();
+
       const insertStmt = db.prepare(`
-        INSERT INTO runs (run_date, distance_km, pace_sec_per_km, pace_display, avg_hr, duration_sec, run_type, notes, is_demo)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
+        INSERT INTO runs (run_date, distance_km, pace_sec_per_km, pace_display, avg_hr, duration_sec, run_type, notes, shoe_id, is_demo)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
       `);
 
       const insertedIds = [];
@@ -452,6 +492,14 @@ const server = http.createServer(async (req, res) => {
           const runDate = (item.run_date || new Date().toISOString().slice(0, 10)).trim();
           const runType = (item.run_type || 'easy').trim();
           const notes = (item.notes || '').trim();
+
+          let shoeId = null;
+          if (item.shoe_id !== undefined) {
+            const parsedShoe = parseInt(item.shoe_id, 10);
+            shoeId = Number.isFinite(parsedShoe) && parsedShoe > 0 ? parsedShoe : null;
+          } else if (defaultShoe && runDate >= defaultShoe.start_date) {
+            shoeId = Number(defaultShoe.id);
+          }
 
           if (!Number.isFinite(distanceKm) || distanceKm <= 0 || distanceKm > 250) {
             throw new Error('Distance must be between 0.01 and 250 KM.');
@@ -472,7 +520,8 @@ const server = http.createServer(async (req, res) => {
             avgHr,
             durationSec,
             runType,
-            notes
+            notes,
+            shoeId
           );
           insertedIds.push(Number(result.lastInsertRowid));
         }
@@ -503,6 +552,8 @@ const server = http.createServer(async (req, res) => {
       const runDate = (item.run_date || new Date().toISOString().slice(0, 10)).trim();
       const runType = (item.run_type || 'easy').trim();
       const notes = (item.notes || '').trim();
+      const parsedShoe = item.shoe_id !== undefined ? parseInt(item.shoe_id, 10) : NaN;
+      const shoeId = Number.isFinite(parsedShoe) && parsedShoe > 0 ? parsedShoe : null;
 
       if (!Number.isFinite(distanceKm) || distanceKm <= 0 || distanceKm > 250) {
         return sendJson(res, 400, { error: 'Distance must be between 0.01 and 250 KM.' });
@@ -518,7 +569,7 @@ const server = http.createServer(async (req, res) => {
       db.prepare(`
         UPDATE runs
         SET run_date = ?, distance_km = ?, pace_sec_per_km = ?, pace_display = ?,
-            avg_hr = ?, duration_sec = ?, run_type = ?, notes = ?, is_demo = 0
+            avg_hr = ?, duration_sec = ?, run_type = ?, notes = ?, shoe_id = ?, is_demo = 0
         WHERE id = ?
       `).run(
         runDate,
@@ -529,9 +580,85 @@ const server = http.createServer(async (req, res) => {
         durationSec,
         runType,
         notes,
+        shoeId,
         id
       );
 
+      return sendJson(res, 200, { ok: true, ...getAllRunsAndSettings() });
+    }
+
+    if (pathname === '/api/shoes' && req.method === 'GET') {
+      return sendJson(res, 200, { shoes: getShoes() });
+    }
+
+    if (pathname === '/api/shoes' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const name = String(body.name || '').trim();
+      if (!name) {
+        return sendJson(res, 400, { error: 'Shoe name is required.' });
+      }
+      const startDate = String(body.start_date || new Date().toISOString().slice(0, 10)).trim();
+      const maxDistKm = Math.max(50, Math.min(5000, parseFloat(body.max_distance_km) || 650));
+      const initialKm = Math.max(0, Math.min(5000, parseFloat(body.initial_km) || 0));
+      const existingCount = db.prepare('SELECT COUNT(*) as count FROM shoes').get().count;
+      const isDefault = body.is_default === true || body.is_default === 1 || existingCount === 0 ? 1 : 0;
+
+      db.exec('BEGIN TRANSACTION');
+      try {
+        if (isDefault) {
+          db.exec('UPDATE shoes SET is_default = 0');
+        }
+        db.prepare(`
+          INSERT INTO shoes (name, start_date, max_distance_km, initial_km, is_default)
+          VALUES (?, ?, ?, ?, ?)
+        `).run(name, startDate, maxDistKm, initialKm, isDefault);
+        db.exec('COMMIT');
+      } catch (err) {
+        db.exec('ROLLBACK');
+        return sendJson(res, 400, { error: err.message });
+      }
+
+      return sendJson(res, 201, { ok: true, ...getAllRunsAndSettings() });
+    }
+
+    if (pathname.startsWith('/api/shoes/') && pathname.endsWith('/default') && req.method === 'PUT') {
+      const id = parseInt(pathname.split('/')[3], 10);
+      if (!Number.isFinite(id)) {
+        return sendJson(res, 400, { error: 'Invalid shoe ID' });
+      }
+      db.exec('BEGIN TRANSACTION');
+      try {
+        db.exec('UPDATE shoes SET is_default = 0');
+        db.prepare('UPDATE shoes SET is_default = 1 WHERE id = ?').run(id);
+        db.exec('COMMIT');
+      } catch (err) {
+        db.exec('ROLLBACK');
+        return sendJson(res, 400, { error: err.message });
+      }
+      return sendJson(res, 200, { ok: true, ...getAllRunsAndSettings() });
+    }
+
+    if (pathname.startsWith('/api/shoes/') && req.method === 'DELETE') {
+      const id = parseInt(pathname.split('/')[3], 10);
+      if (!Number.isFinite(id)) {
+        return sendJson(res, 400, { error: 'Invalid shoe ID' });
+      }
+      db.exec('BEGIN TRANSACTION');
+      try {
+        const target = db.prepare('SELECT is_default FROM shoes WHERE id = ?').get(id);
+        db.prepare('UPDATE runs SET shoe_id = NULL WHERE shoe_id = ?').run(id);
+        db.prepare('DELETE FROM shoes WHERE id = ?').run(id);
+        if (target && target.is_default === 1) {
+          const nextShoe = db.prepare('SELECT id FROM shoes ORDER BY id DESC LIMIT 1').get();
+          if (nextShoe) {
+            db.prepare('UPDATE shoes SET is_default = 1 WHERE id = ?').run(nextShoe.id);
+          }
+        }
+        db.exec('COMMIT');
+      } catch (err) {
+        db.exec('ROLLBACK');
+        return sendJson(res, 400, { error: err.message });
+      }
       return sendJson(res, 200, { ok: true, ...getAllRunsAndSettings() });
     }
 

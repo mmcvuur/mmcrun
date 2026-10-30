@@ -1211,10 +1211,151 @@ button {
   white-space: nowrap;
 }
 
+/* Shoe Distance Tracker Card */
+.card-shoes {
+  flex-shrink: 0;
+}
+
+.shoe-add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border-main);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+}
+
+.shoe-add-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.shoes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 175px;
+  overflow-y: auto;
+}
+
+.shoe-item {
+  background: var(--bg-deep);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 7px 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  transition: border-color 0.14s ease;
+}
+
+.shoe-item.shoe-default {
+  border-color: rgba(158, 206, 106, 0.38);
+}
+
+.shoe-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.shoe-name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.shoe-name {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-bright);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shoe-badge {
+  font-size: 8.5px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.shoe-badge-active {
+  background: rgba(158, 206, 106, 0.15);
+  color: var(--tn-green);
+  border: 1px solid rgba(158, 206, 106, 0.35);
+}
+
+.shoe-badge-set {
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  border: 1px solid var(--border-main);
+  cursor: pointer;
+}
+
+.shoe-badge-set:hover {
+  color: var(--tn-blue);
+  border-color: var(--tn-blue);
+}
+
+.shoe-stats-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.shoe-km-val {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--tn-green);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.shoe-km-val small {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.shoe-bar-track {
+  height: 5px;
+  background: var(--bg-elevated);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.shoe-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.shoe-item-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 9.5px;
+  color: var(--text-muted);
+}
+
 /* History Table Card */
 .card-history {
   flex: 1;
-  min-height: 240px;
+  min-height: 180px;
   overflow: hidden;
 }
 

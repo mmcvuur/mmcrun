@@ -8,6 +8,7 @@
   // Application State
   const state = {
     runs: [],
+    shoes: [],
     settings: {
       goal_distance_km: '10.0',
       goal_target_pace: '5:20',
@@ -171,6 +172,7 @@
     try {
       const data = await apiRequest('/api/state');
       state.runs = data.runs || [];
+      state.shoes = data.shoes || [];
       state.settings = { ...state.settings, ...(data.settings || {}) };
       localStorage.setItem('stride_backup_state', JSON.stringify(data));
       if (statusText) statusText.textContent = 'SQLITE3 SYNCED';
@@ -180,6 +182,7 @@
       if (cached) {
         const parsed = JSON.parse(cached);
         state.runs = parsed.runs || [];
+        state.shoes = parsed.shoes || [];
         state.settings = { ...state.settings, ...(parsed.settings || {}) };
       }
       if (statusText) statusText.textContent = 'OFFLINE CACHE';
@@ -195,6 +198,7 @@
     renderDemoBanner();
     renderStatsAnd10kMission();
     renderHrZonesAndPRs();
+    renderShoesTracker();
     renderHistoryTable();
     renderChart();
     updateLiveFormPreview();
@@ -516,6 +520,114 @@
       bestEfEl.textContent = '-- m/b';
       if (bestEfSubEl) bestEfSubEl.textContent = 'Meters / beat';
     }
+  }
+
+  function syncFormShoeSelect() {
+    const shoeSelect = document.getElementById('inputShoe');
+    if (!shoeSelect) return;
+    const editId = document.getElementById('editRunId').value;
+    const prevValue = shoeSelect.value;
+    const shoes = state.shoes || [];
+
+    const optionsHtml = [
+      `<option value="">None / Unassigned</option>`,
+      ...shoes.map(s => {
+        const label = `${s.name}${Number(s.is_default) === 1 ? ' (Default)' : ''}`;
+        return `<option value="${s.id}">${label.replace(/</g, '&lt;')}</option>`;
+      })
+    ].join('');
+    shoeSelect.innerHTML = optionsHtml;
+
+    if (editId) {
+      shoeSelect.value = prevValue;
+      return;
+    }
+
+    const dateVal = document.getElementById('inputDate').value || new Date().toISOString().slice(0, 10);
+    const defaultShoe = shoes.find(s => Number(s.is_default) === 1) || shoes[0];
+    if (defaultShoe && dateVal >= (defaultShoe.start_date || '2026-11-01')) {
+      shoeSelect.value = String(defaultShoe.id);
+    } else if (prevValue && shoes.some(s => String(s.id) === prevValue)) {
+      shoeSelect.value = prevValue;
+    } else {
+      shoeSelect.value = '';
+    }
+  }
+
+  function renderShoesTracker() {
+    const listEl = document.getElementById('shoesTrackerList');
+    const countPill = document.getElementById('shoesCountPill');
+    if (!listEl) return;
+
+    const shoes = state.shoes || [];
+    if (countPill) countPill.textContent = String(shoes.length);
+
+    syncFormShoeSelect();
+
+    if (shoes.length === 0) {
+      listEl.innerHTML = `
+        <div style="text-align: center; padding: 12px 8px; color: var(--text-muted); font-size: 10.5px;">
+          No shoes tracked yet. Click <strong>+ ADD SHOE</strong> above to track shoe mileage.
+        </div>
+      `;
+      return;
+    }
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    listEl.innerHTML = shoes
+      .map(shoe => {
+        const isDefault = Number(shoe.is_default) === 1;
+        const startDate = shoe.start_date || '2026-11-01';
+        const maxKm = Math.max(50, Number(shoe.max_distance_km) || 650);
+        const initKm = Math.max(0, Number(shoe.initial_km) || 0);
+
+        const shoeRuns = state.runs.filter(r => {
+          if (r.shoe_id !== null && r.shoe_id !== undefined && String(r.shoe_id) !== '') {
+            return Number(r.shoe_id) === Number(shoe.id);
+          }
+          return isDefault && r.run_date >= startDate;
+        });
+
+        const loggedKm = shoeRuns.reduce((sum, r) => sum + (Number(r.distance_km) || 0), 0);
+        const totalKm = initKm + loggedKm;
+        const wearPct = Math.min(100, Math.round((totalKm / maxKm) * 100));
+        const remKm = Math.max(0, maxKm - totalKm);
+        const barColor = wearPct >= 90 ? COLORS.red : wearPct >= 75 ? COLORS.orange : COLORS.green;
+
+        const safeName = String(shoe.name || 'Shoe').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const dateStatus =
+          shoeRuns.length === 0 && startDate > todayStr
+            ? `First run: ${formatShortDate(startDate)}`
+            : `Since ${formatShortDate(startDate)}`;
+
+        return `
+          <div class="shoe-item ${isDefault ? 'shoe-default' : ''}">
+            <div class="shoe-item-top">
+              <div class="shoe-name-wrap">
+                <span class="shoe-name" title="${safeName}">${safeName}</span>
+                ${
+                  isDefault
+                    ? `<span class="shoe-badge shoe-badge-active" title="Default shoe for new runs">ACTIVE</span>`
+                    : `<button type="button" class="shoe-badge shoe-badge-set btn-set-default-shoe" data-id="${shoe.id}" title="Set as default shoe">SET ACTIVE</button>`
+                }
+              </div>
+              <div class="shoe-stats-right">
+                <span class="shoe-km-val">${totalKm.toFixed(2)} <small>KM</small></span>
+                <button type="button" class="row-btn delete btn-delete-shoe" data-id="${shoe.id}" title="Remove ${safeName}">&times;</button>
+              </div>
+            </div>
+            <div class="shoe-bar-track" title="${wearPct}% of ${maxKm} KM lifespan (${remKm.toFixed(1)} KM remaining)">
+              <div class="shoe-bar-fill" style="width: ${wearPct}%; background-color: ${barColor}"></div>
+            </div>
+            <div class="shoe-item-foot">
+              <span>${shoeRuns.length} ${shoeRuns.length === 1 ? 'run' : 'runs'} &bull; ${dateStatus}</span>
+              <span>${totalKm.toFixed(1)} / ${maxKm.toFixed(0)} km (${wearPct}%)</span>
+            </div>
+          </div>
+        `;
+      })
+      .join('');
   }
 
   function renderHistoryTable() {
@@ -1009,6 +1121,7 @@
     document.getElementById('inputHr').value = '';
     document.getElementById('inputType').value = 'easy';
     document.getElementById('inputNotes').value = '';
+    syncFormShoeSelect();
     updateLiveFormPreview();
   }
 
@@ -1023,6 +1136,20 @@
     document.getElementById('inputHr').value = String(run.avg_hr);
     document.getElementById('inputType').value = run.run_type || 'easy';
     document.getElementById('inputNotes').value = run.notes || '';
+    syncFormShoeSelect();
+    const shoeSelect = document.getElementById('inputShoe');
+    if (shoeSelect) {
+      if (run.shoe_id !== null && run.shoe_id !== undefined && String(run.shoe_id) !== '') {
+        shoeSelect.value = String(run.shoe_id);
+      } else {
+        const defaultShoe = (state.shoes || []).find(s => Number(s.is_default) === 1);
+        if (defaultShoe && run.run_date >= (defaultShoe.start_date || '2026-11-01')) {
+          shoeSelect.value = String(defaultShoe.id);
+        } else {
+          shoeSelect.value = '';
+        }
+      }
+    }
     updateLiveFormPreview();
 
     if (window.innerWidth < 960) {
@@ -1073,8 +1200,15 @@
   function bindEvents() {
     // Default date to today
     const dateInput = document.getElementById('inputDate');
-    if (dateInput && !dateInput.value) {
-      dateInput.value = new Date().toISOString().slice(0, 10);
+    if (dateInput) {
+      if (!dateInput.value) {
+        dateInput.value = new Date().toISOString().slice(0, 10);
+      }
+      dateInput.addEventListener('change', () => {
+        if (!document.getElementById('editRunId').value) {
+          syncFormShoeSelect();
+        }
+      });
     }
 
     // Live preview inputs
@@ -1098,13 +1232,16 @@
     document.getElementById('runForm').addEventListener('submit', async e => {
       e.preventDefault();
       const editId = document.getElementById('editRunId').value;
+      const shoeEl = document.getElementById('inputShoe');
+      const shoeVal = shoeEl && shoeEl.value ? parseInt(shoeEl.value, 10) : null;
       const payload = {
         run_date: document.getElementById('inputDate').value,
         distance_km: parseFloat(document.getElementById('inputDistance').value),
         pace: document.getElementById('inputPace').value.trim(),
         avg_hr: parseInt(document.getElementById('inputHr').value, 10),
         run_type: document.getElementById('inputType').value,
-        notes: document.getElementById('inputNotes').value.trim()
+        notes: document.getElementById('inputNotes').value.trim(),
+        shoe_id: shoeVal
       };
 
       try {
@@ -1123,6 +1260,7 @@
           showToast(`Saved ${payload.distance_km} KM run to SQLite3!`);
         }
         state.runs = data.runs;
+        if (data.shoes) state.shoes = data.shoes;
         state.settings = data.settings;
         resetFormToNew();
         renderAll();
@@ -1133,6 +1271,99 @@
         showToast(`Error: ${err.message}`);
       }
     });
+
+    // Shoe Distance Tracker Add / Set Active / Delete Events
+    const addShoeForm = document.getElementById('addShoeForm');
+    const btnToggleAddShoe = document.getElementById('btnToggleAddShoe');
+    const btnCancelAddShoe = document.getElementById('btnCancelAddShoe');
+    const inputShoeStartDate = document.getElementById('inputShoeStartDate');
+
+    if (btnToggleAddShoe && addShoeForm) {
+      btnToggleAddShoe.addEventListener('click', () => {
+        const isHidden = addShoeForm.classList.contains('hidden');
+        if (isHidden) {
+          if (inputShoeStartDate && !inputShoeStartDate.value) {
+            inputShoeStartDate.value = new Date().toISOString().slice(0, 10);
+          }
+          addShoeForm.classList.remove('hidden');
+          document.getElementById('inputShoeName').focus();
+        } else {
+          addShoeForm.classList.add('hidden');
+        }
+      });
+    }
+
+    if (btnCancelAddShoe && addShoeForm) {
+      btnCancelAddShoe.addEventListener('click', () => {
+        addShoeForm.classList.add('hidden');
+      });
+    }
+
+    if (addShoeForm) {
+      addShoeForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        const name = document.getElementById('inputShoeName').value.trim();
+        const start_date = document.getElementById('inputShoeStartDate').value;
+        const max_distance_km = parseFloat(document.getElementById('inputShoeMaxKm').value) || 650;
+        const initial_km = parseFloat(document.getElementById('inputShoeInitialKm').value) || 0;
+        if (!name) return;
+
+        try {
+          const data = await apiRequest('/api/shoes', {
+            method: 'POST',
+            body: JSON.stringify({
+              name,
+              start_date,
+              max_distance_km,
+              initial_km,
+              is_default: true
+            })
+          });
+          state.shoes = data.shoes || [];
+          state.runs = data.runs || state.runs;
+          document.getElementById('inputShoeName').value = '';
+          document.getElementById('inputShoeInitialKm').value = '0';
+          addShoeForm.classList.add('hidden');
+          renderAll();
+          showToast(`Added shoe "${name}" to tracker`);
+        } catch (err) {
+          showToast(`Error: ${err.message}`);
+        }
+      });
+    }
+
+    const shoesListEl = document.getElementById('shoesTrackerList');
+    if (shoesListEl) {
+      shoesListEl.addEventListener('click', async e => {
+        const setDefBtn = e.target.closest('.btn-set-default-shoe');
+        if (setDefBtn) {
+          const id = Number(setDefBtn.dataset.id);
+          try {
+            const data = await apiRequest(`/api/shoes/${id}/default`, { method: 'PUT' });
+            state.shoes = data.shoes || [];
+            renderAll();
+            showToast('Updated active default shoe');
+          } catch (err) {
+            showToast(`Error: ${err.message}`);
+          }
+          return;
+        }
+
+        const delShoeBtn = e.target.closest('.btn-delete-shoe');
+        if (delShoeBtn) {
+          const id = Number(delShoeBtn.dataset.id);
+          try {
+            const data = await apiRequest(`/api/shoes/${id}`, { method: 'DELETE' });
+            state.shoes = data.shoes || [];
+            state.runs = data.runs || state.runs;
+            renderAll();
+            showToast('Shoe removed from tracker');
+          } catch (err) {
+            showToast(`Error: ${err.message}`);
+          }
+        }
+      });
+    }
 
     // History Table Edit & Delete Actions
     document.getElementById('historyTableBody').addEventListener('click', async e => {

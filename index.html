@@ -204,17 +204,28 @@
               </div>
             </div>
 
-            <div class="field">
-              <label for="inputNotes">
-                <span>RUN NOTES</span>
-                <span class="label-hint">OPTIONAL</span>
-              </label>
-              <input
-                type="text"
-                id="inputNotes"
-                maxlength="160"
-                placeholder="How did it feel? Weather, splits, shoes..."
-              />
+            <div class="form-row-2">
+              <div class="field">
+                <label for="inputShoe">
+                  <span>SHOE</span>
+                  <span class="label-hint">GEAR</span>
+                </label>
+                <select id="inputShoe">
+                  <option value="">None / Unassigned</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="inputNotes">
+                  <span>RUN NOTES</span>
+                  <span class="label-hint">OPTIONAL</span>
+                </label>
+                <input
+                  type="text"
+                  id="inputNotes"
+                  maxlength="160"
+                  placeholder="Weather, splits, feel..."
+                />
+              </div>
             </div>
 
             <button type="submit" class="btn btn-primary btn-block" id="btnSubmitRun">
@@ -501,6 +512,52 @@
 
           <div class="zones-bars" id="zonesBars">
             <!-- Dynamically populated Z1 - Z5 distribution -->
+          </div>
+        </div>
+
+        <!-- SHOE DISTANCE (KM) TRACKER -->
+        <div class="card card-shoes">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-indicator indicator-green"></span>
+              <h2 class="card-title">SHOE DISTANCE TRACKER</h2>
+              <span class="count-pill" id="shoesCountPill">1</span>
+            </div>
+            <button type="button" class="btn btn-xs btn-ghost" id="btnToggleAddShoe" title="Add another pair of running shoes">
+              + ADD SHOE
+            </button>
+          </div>
+
+          <!-- COLLAPSIBLE INLINE ADD SHOE FORM -->
+          <form id="addShoeForm" class="shoe-add-form hidden" autocomplete="off">
+            <div class="form-row-2">
+              <div class="field">
+                <label for="inputShoeName">SHOE MODEL / NAME</label>
+                <input type="text" id="inputShoeName" placeholder="e.g. ASICS Novablast" maxlength="50" required />
+              </div>
+              <div class="field">
+                <label for="inputShoeStartDate">FIRST RUN DATE</label>
+                <input type="date" id="inputShoeStartDate" required />
+              </div>
+            </div>
+            <div class="form-row-2">
+              <div class="field">
+                <label for="inputShoeMaxKm">LIFESPAN GOAL (KM)</label>
+                <input type="number" id="inputShoeMaxKm" step="10" min="50" max="5000" value="650" required />
+              </div>
+              <div class="field">
+                <label for="inputShoeInitialKm">PRIOR KM (OPTIONAL)</label>
+                <input type="number" id="inputShoeInitialKm" step="0.1" min="0" max="5000" value="0" />
+              </div>
+            </div>
+            <div class="shoe-add-actions">
+              <button type="button" class="btn btn-xs btn-ghost" id="btnCancelAddShoe">CANCEL</button>
+              <button type="submit" class="btn btn-xs btn-primary">SAVE SHOE</button>
+            </div>
+          </form>
+
+          <div class="shoes-list" id="shoesTrackerList">
+            <!-- Populated by app.js -->
           </div>
         </div>
 
