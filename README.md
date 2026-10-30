@@ -1,6 +1,6 @@
 # mmcRUN — Run Telemetry & Gemini AI Coach
 
-A zero-dependency, local-first **10K running telemetry tracker, analytics dashboard, and Gemini AI running coach** built on Node.js (`node:http` + `node:sqlite`), `uPlot`, and a crisp **Tokyo Night** UI with self-hosted `JetBrains Mono` typography.
+A zero-dependency, local-first **running telemetry tracker, analytics dashboard, and Gemini AI running coach** built on Node.js (`node:http` + `node:sqlite`), `uPlot`, and a crisp **Tokyo Night** UI with self-hosted `JetBrains Mono` typography.
 
 ---
 
@@ -68,7 +68,6 @@ Create a `.env` file in the project root (or set the key directly inside the `/c
 ```ini
 GEMINI_API_KEY=your_google_ai_studio_api_key
 ```
-> `.env` is git-ignored so your API key is never committed to version control or stored inside `mmcruns.db`.
 
 ### 3. Start the Server
 ```bash
