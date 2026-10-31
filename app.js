@@ -17,7 +17,7 @@
       max_hr: '162',
       resting_hr: '56'
     },
-    chartMode: 'efficiency', // 'combined' | 'distance' | 'pace_hr' | 'efficiency'
+    chartMode: 'pace_hr',    // 'combined' | 'distance' | 'pace_hr' | 'efficiency'
     chartRange: '7',         // '7' | '15' | 'all'
     filterType: 'all',
     mobileTab: 'dashboard',
