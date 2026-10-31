@@ -1130,6 +1130,25 @@
         }
       }
 
+      function formatLocalTimestamp(ts) {
+        if (!ts) return '';
+        const raw = String(ts).trim();
+        // SQLite datetime('now') stores UTC as "YYYY-MM-DD HH:MM:SS" without a Z suffix
+        const iso = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(raw)
+          ? raw.replace(' ', 'T') + 'Z'
+          : raw;
+        const d = new Date(iso);
+        if (Number.isNaN(d.getTime())) {
+          return raw.slice(0, 16).replace('T', ' ');
+        }
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        const hh = String(d.getHours()).padStart(2, '0');
+        const min = String(d.getMinutes()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+      }
+
       function renderMessages() {
         msgCountBadge.textContent = `${messages.length} MESSAGES`;
 
@@ -1148,7 +1167,7 @@
           const isUser = m.role === 'user';
           row.className = `msg-row ${isUser ? 'msg-user' : 'msg-model'}`;
 
-          const timeLabel = m.created_at ? m.created_at.slice(0, 16).replace('T', ' ') : '';
+          const timeLabel = formatLocalTimestamp(m.created_at);
           const meta = document.createElement('div');
           meta.className = 'msg-meta';
           meta.innerHTML = `
