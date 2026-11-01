@@ -480,34 +480,16 @@
         </div>
       </section>
 
-      <!-- RIGHT PANEL: HR ZONES + RUN HISTORY TABLE -->
+      <!-- RIGHT PANEL: HR ZONES + SHOES + PERSONAL RECORDS + RUN HISTORY TABLE -->
       <section class="panel panel-right" data-mobile-view="history">
-        <!-- HEART RATE ZONE DISTRIBUTION & PERSONAL RECORDS -->
+        <!-- HEART RATE ZONE DISTRIBUTION -->
         <div class="card card-zones">
           <div class="card-header">
             <div class="card-title-group">
               <span class="card-indicator indicator-red"></span>
-              <h2 class="card-title">HR ZONES &amp; PERSONAL RECORDS</h2>
+              <h2 class="card-title">HEART RATE ZONES</h2>
             </div>
             <span class="text-muted text-xs" id="maxHrLabel">MAX HR: 162</span>
-          </div>
-
-          <div class="pr-badges-row" id="prBadgesRow">
-            <div class="pr-pill" id="prFastest5kPill" title="Fastest 5.0 KM time from runs >= 5 KM">
-              <span class="pr-pill-label">FASTEST 5K</span>
-              <span class="pr-pill-val text-purple" id="prFastest5k">--:--</span>
-              <span class="pr-pill-sub" id="prFastest5kSub">Runs &ge; 5.0 km</span>
-            </div>
-            <div class="pr-pill" id="prBestPacePill" title="Fastest average pace across all runs">
-              <span class="pr-pill-label">BEST PACE</span>
-              <span class="pr-pill-val text-cyan" id="prBestPace">--:--/km</span>
-              <span class="pr-pill-sub" id="prBestPaceSub">All distances</span>
-            </div>
-            <div class="pr-pill" id="prBestEfPill" title="Highest meters traveled per heartbeat">
-              <span class="pr-pill-label">BEST AEROBIC EF</span>
-              <span class="pr-pill-val text-green" id="prBestEf">-- m/b</span>
-              <span class="pr-pill-sub" id="prBestEfSub">Meters / beat</span>
-            </div>
           </div>
 
           <div class="zones-bars" id="zonesBars">
@@ -558,6 +540,71 @@
 
           <div class="shoes-list" id="shoesTrackerList">
             <!-- Populated by app.js -->
+          </div>
+        </div>
+
+        <!-- PERSONAL RECORDS (PR) SUMMARY CARD (JUST ABOVE RUN LOG HISTORY) -->
+        <div class="card card-prs">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-indicator" style="background-color: var(--tn-yellow); box-shadow: 0 0 6px var(--tn-yellow);"></span>
+              <h2 class="card-title">PERSONAL RECORDS</h2>
+            </div>
+            <button type="button" class="btn btn-xs btn-pr-gold" id="btnOpenPrModal" title="Expand full All-Time Personal Records (1st, 2nd & 3rd Podium)">
+              <svg class="trophy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M6 3H18V8C18 11.3137 15.3137 14 12 14C8.68629 14 6 11.3137 6 8V3Z" fill="currentColor" fill-opacity="0.25" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                <path d="M6 5H3V7C3 9.20914 4.79086 11 7 11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M18 5H21V7C21 9.20914 19.2091 11 17 11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M12 14V19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M8 21H16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+              </svg>
+              ALL-TIME PRs
+            </button>
+          </div>
+
+          <div class="pr-badges-row" id="prBadgesRow" style="cursor: pointer;" title="Click to expand full All-Time Personal Records (1st / 2nd / 3rd Podium)">
+            <div class="pr-pill" id="prFastest5kPill" title="Fastest 5.0 KM time from runs >= 5 KM">
+              <span class="pr-pill-label">
+                <svg class="trophy-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M6 3H18V8C18 11.3137 15.3137 14 12 14C8.68629 14 6 11.3137 6 8V3Z" fill="#e0af68" fill-opacity="0.25" stroke="#e0af68" stroke-width="2" stroke-linejoin="round"/>
+                  <path d="M6 5H3V7C3 9.20914 4.79086 11 7 11" stroke="#e0af68" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M18 5H21V7C21 9.20914 19.2091 11 17 11" stroke="#e0af68" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M12 14V19" stroke="#e0af68" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M8 21H16" stroke="#e0af68" stroke-width="2.2" stroke-linecap="round"/>
+                </svg>
+                FASTEST 5K
+              </span>
+              <span class="pr-pill-val text-purple" id="prFastest5k">--:--</span>
+              <span class="pr-pill-sub" id="prFastest5kSub">Runs &ge; 5.0 km</span>
+            </div>
+            <div class="pr-pill" id="prBestPacePill" title="Fastest average pace across all runs">
+              <span class="pr-pill-label">
+                <svg class="trophy-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M6 3H18V8C18 11.3137 15.3137 14 12 14C8.68629 14 6 11.3137 6 8V3Z" fill="#e0af68" fill-opacity="0.25" stroke="#e0af68" stroke-width="2" stroke-linejoin="round"/>
+                  <path d="M6 5H3V7C3 9.20914 4.79086 11 7 11" stroke="#e0af68" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M18 5H21V7C21 9.20914 19.2091 11 17 11" stroke="#e0af68" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M12 14V19" stroke="#e0af68" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M8 21H16" stroke="#e0af68" stroke-width="2.2" stroke-linecap="round"/>
+                </svg>
+                BEST PACE
+              </span>
+              <span class="pr-pill-val text-cyan" id="prBestPace">--:--/km</span>
+              <span class="pr-pill-sub" id="prBestPaceSub">All distances</span>
+            </div>
+            <div class="pr-pill" id="prBestEfPill" title="Highest meters traveled per heartbeat">
+              <span class="pr-pill-label">
+                <svg class="trophy-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M6 3H18V8C18 11.3137 15.3137 14 12 14C8.68629 14 6 11.3137 6 8V3Z" fill="#e0af68" fill-opacity="0.25" stroke="#e0af68" stroke-width="2" stroke-linejoin="round"/>
+                  <path d="M6 5H3V7C3 9.20914 4.79086 11 7 11" stroke="#e0af68" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M18 5H21V7C21 9.20914 19.2091 11 17 11" stroke="#e0af68" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M12 14V19" stroke="#e0af68" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M8 21H16" stroke="#e0af68" stroke-width="2.2" stroke-linecap="round"/>
+                </svg>
+                BEST AEROBIC EF
+              </span>
+              <span class="pr-pill-val text-green" id="prBestEf">-- m/b</span>
+              <span class="pr-pill-sub" id="prBestEfSub">Meters / beat</span>
+            </div>
           </div>
         </div>
 
@@ -701,6 +748,27 @@
           <button type="submit" class="btn btn-primary btn-sm">SAVE SETTINGS TO SQLITE3</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL: PERSONAL RECORDS (PR TROPHY CASE) -->
+  <div class="modal-backdrop hidden" id="prModal">
+    <div class="modal-card modal-card-wide">
+      <div class="modal-header">
+        <div class="card-title-group">
+          <span class="card-indicator" style="background: var(--tn-yellow); box-shadow: 0 0 6px var(--tn-yellow);"></span>
+          <h3 class="modal-title">&#9733; PERSONAL RECORDS &amp; ALL-TIME PODIUM (1ST / 2ND / 3RD)</h3>
+        </div>
+        <button type="button" class="btn btn-xs btn-ghost" id="btnClosePrModal">&times; CLOSE</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">
+          All-time Gold (<strong>PR</strong>), Silver (<strong>2nd</strong>), and Bronze (<strong>3rd</strong>) best efforts across your logged runs.
+        </p>
+        <div class="pr-trophy-grid" id="prTrophyGrid">
+          <!-- Populated by app.js -->
+        </div>
+      </div>
     </div>
   </div>
 

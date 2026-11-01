@@ -139,16 +139,16 @@
     return `${months[m] || parts[1]} ${parseInt(parts[2], 10)}`;
   }
 
-  function showToast(msg) {
+  function showToast(msg, isPr = false) {
     const container = document.getElementById('toastContainer');
     if (!container) return;
     const el = document.createElement('div');
-    el.className = 'toast';
+    el.className = isPr ? 'toast toast-pr' : 'toast';
     el.textContent = msg;
     container.appendChild(el);
     setTimeout(() => {
       el.remove();
-    }, 3200);
+    }, isPr ? 5000 : 3200);
   }
 
   // ==========================================================================
@@ -199,6 +199,7 @@
     renderStatsAnd10kMission();
     renderHrZonesAndPRs();
     renderShoesTracker();
+    renderPrTrophyModal();
     renderHistoryTable();
     renderChart();
     updateLiveFormPreview();
@@ -623,6 +624,168 @@
             <div class="shoe-item-foot">
               <span>${shoeRuns.length} ${shoeRuns.length === 1 ? 'run' : 'runs'} &bull; ${dateStatus}</span>
               <span>${totalKm.toFixed(1)} / ${maxKm.toFixed(0)} km (${wearPct}%)</span>
+            </div>
+          </div>
+        `;
+      })
+      .join('');
+  }
+
+  function computePersonalRecords(runs = state.runs) {
+    const categories = [
+      {
+        key: 'fastest_3k',
+        title: 'FASTEST 3K SPLIT',
+        sub: 'Runs >= 3.0 km',
+        pool: runs.filter(r => Number(r.distance_km) >= 3.0),
+        sortFn: (a, b) => Number(a.pace_sec_per_km) - Number(b.pace_sec_per_km),
+        formatVal: r => formatDuration(Math.round(3.0 * Number(r.pace_sec_per_km))),
+        formatDetail: r => `${r.pace_display}/km • ${Number(r.distance_km).toFixed(2)}k`
+      },
+      {
+        key: 'fastest_5k',
+        title: 'FASTEST 5K SPLIT',
+        sub: 'Runs >= 5.0 km',
+        pool: runs.filter(r => Number(r.distance_km) >= 5.0),
+        sortFn: (a, b) => Number(a.pace_sec_per_km) - Number(b.pace_sec_per_km),
+        formatVal: r => formatDuration(Math.round(5.0 * Number(r.pace_sec_per_km))),
+        formatDetail: r => `${r.pace_display}/km • ${Number(r.distance_km).toFixed(2)}k`
+      },
+      {
+        key: 'fastest_7_5k',
+        title: 'FASTEST 7.5K SPLIT',
+        sub: 'Runs >= 7.5 km',
+        pool: runs.filter(r => Number(r.distance_km) >= 7.5),
+        sortFn: (a, b) => Number(a.pace_sec_per_km) - Number(b.pace_sec_per_km),
+        formatVal: r => formatDuration(Math.round(7.5 * Number(r.pace_sec_per_km))),
+        formatDetail: r => `${r.pace_display}/km • ${Number(r.distance_km).toFixed(2)}k`
+      },
+      {
+        key: 'fastest_10k',
+        title: 'FASTEST 10K SPLIT',
+        sub: 'Runs >= 10.0 km',
+        pool: runs.filter(r => Number(r.distance_km) >= 10.0),
+        sortFn: (a, b) => Number(a.pace_sec_per_km) - Number(b.pace_sec_per_km),
+        formatVal: r => formatDuration(Math.round(10.0 * Number(r.pace_sec_per_km))),
+        formatDetail: r => `${r.pace_display}/km • ${Number(r.distance_km).toFixed(2)}k`
+      },
+      {
+        key: 'longest_run',
+        title: 'LONGEST SINGLE RUN',
+        sub: 'Furthest distance',
+        pool: runs.slice(),
+        sortFn: (a, b) => Number(b.distance_km) - Number(a.distance_km) || Number(a.pace_sec_per_km) - Number(b.pace_sec_per_km),
+        formatVal: r => `${Number(r.distance_km).toFixed(2)} KM`,
+        formatDetail: r => `${formatDuration(r.duration_sec)} @ ${r.pace_display}/km`
+      },
+      {
+        key: 'best_pace',
+        title: 'FASTEST SESSION PACE',
+        sub: 'All runs',
+        pool: runs.slice(),
+        sortFn: (a, b) => Number(a.pace_sec_per_km) - Number(b.pace_sec_per_km),
+        formatVal: r => `${r.pace_display} /KM`,
+        formatDetail: r => `${Number(r.distance_km).toFixed(2)} km • ${(3600 / Number(r.pace_sec_per_km)).toFixed(1)} km/h`
+      },
+      {
+        key: 'best_ef',
+        title: 'PEAK AEROBIC EFFICIENCY',
+        sub: 'Meters / heartbeat',
+        pool: runs.slice(),
+        sortFn: (a, b) =>
+          calcMetersPerBeat(b.pace_sec_per_km, b.avg_hr) - calcMetersPerBeat(a.pace_sec_per_km, a.avg_hr),
+        formatVal: r => `${calcMetersPerBeat(r.pace_sec_per_km, r.avg_hr).toFixed(2)} M/B`,
+        formatDetail: r => `${r.pace_display}/km @ ${r.avg_hr} bpm`
+      }
+    ];
+
+    const goldPrMap = new Map(); // run.id -> array of PR titles
+    const podiumCategories = categories.map(cat => {
+      const sorted = cat.pool.slice().sort(cat.sortFn);
+      const top3 = sorted.slice(0, 3);
+      if (top3.length > 0) {
+        const winId = Number(top3[0].id);
+        if (!goldPrMap.has(winId)) goldPrMap.set(winId, []);
+        goldPrMap.get(winId).push(`${cat.title} (${cat.formatVal(top3[0])})`);
+      }
+      return {
+        ...cat,
+        top3
+      };
+    });
+
+    return { podiumCategories, goldPrMap };
+  }
+
+  function getTrophySvg(rank = 1, size = 13) {
+    const colors = {
+      1: '#e0af68', // Gold
+      2: '#c0caf5', // Silver
+      3: '#ff9e64'  // Bronze
+    };
+    const c = colors[rank] || colors[1];
+    return `<svg class="trophy-icon trophy-rank-${rank}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M6 3H18V8C18 11.3137 15.3137 14 12 14C8.68629 14 6 11.3137 6 8V3Z" fill="${c}" fill-opacity="0.24" stroke="${c}" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M6 5H3V7C3 9.20914 4.79086 11 7 11" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M18 5H21V7C21 9.20914 19.2091 11 17 11" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M12 14V19" stroke="${c}" stroke-width="2" stroke-linecap="round"/>
+      <path d="M8 21H16" stroke="${c}" stroke-width="2.2" stroke-linecap="round"/>
+    </svg>`;
+  }
+
+  function renderPrTrophyModal() {
+    const gridEl = document.getElementById('prTrophyGrid');
+    if (!gridEl) return;
+
+    const { podiumCategories } = computePersonalRecords(state.runs);
+    const medalBadges = [
+      { cls: 'medal-gold', label: '1ST', rank: 1 },
+      { cls: 'medal-silver', label: '2ND', rank: 2 },
+      { cls: 'medal-bronze', label: '3RD', rank: 3 }
+    ];
+
+    gridEl.innerHTML = podiumCategories
+      .map(cat => {
+        if (cat.top3.length === 0) {
+          return `
+            <div class="pr-category-card">
+              <div class="pr-category-head">
+                <span class="pr-category-title">${cat.title}</span>
+                <span class="pr-category-sub">${cat.sub}</span>
+              </div>
+              <div style="padding: 12px 4px; color: var(--text-muted); font-size: 10.5px; text-align: center;">
+                No qualifying runs logged yet (${cat.sub}).
+              </div>
+            </div>
+          `;
+        }
+
+        const rowsHtml = cat.top3
+          .map((r, idx) => {
+            const m = medalBadges[idx];
+            return `
+              <div class="pr-podium-row rank-${idx + 1}">
+                <div class="pr-podium-left">
+                  <span class="pr-medal ${m.cls}">${getTrophySvg(m.rank, 12)}<span>${m.label}</span></span>
+                  <span class="pr-podium-val">${cat.formatVal(r)}</span>
+                </div>
+                <div class="pr-podium-right">
+                  <strong>${r.run_date}</strong>
+                  <span>${cat.formatDetail(r)} • ${r.avg_hr} bpm</span>
+                </div>
+              </div>
+            `;
+          })
+          .join('');
+
+        return `
+          <div class="pr-category-card">
+            <div class="pr-category-head">
+              <span class="pr-category-title">${cat.title}</span>
+              <span class="pr-category-sub">${cat.sub}</span>
+            </div>
+            <div class="pr-podium-list">
+              ${rowsHtml}
             </div>
           </div>
         `;
@@ -1246,22 +1409,36 @@
 
       try {
         let data;
+        let targetRunId = null;
         if (editId) {
           data = await apiRequest(`/api/runs/${editId}`, {
             method: 'PUT',
             body: JSON.stringify(payload)
           });
+          targetRunId = Number(editId);
           showToast(`Updated run (${payload.distance_km} KM @ ${payload.pace}/km)`);
         } else {
           data = await apiRequest('/api/runs', {
             method: 'POST',
             body: JSON.stringify(payload)
           });
+          targetRunId = Array.isArray(data.insertedIds) && data.insertedIds.length > 0
+            ? Number(data.insertedIds[data.insertedIds.length - 1])
+            : null;
           showToast(`Saved ${payload.distance_km} KM run to SQLite3!`);
         }
         state.runs = data.runs;
         if (data.shoes) state.shoes = data.shoes;
         state.settings = data.settings;
+
+        if (targetRunId) {
+          const { goldPrMap } = computePersonalRecords(state.runs);
+          const brokenPrs = goldPrMap.get(targetRunId);
+          if (brokenPrs && brokenPrs.length > 0) {
+            showToast(`★ NEW PR! ${brokenPrs.join(' • ')}`, true);
+          }
+        }
+
         resetFormToNew();
         renderAll();
         if (window.innerWidth < 960) {
@@ -1365,8 +1542,34 @@
       });
     }
 
-    // History Table Edit & Delete Actions
+    // Personal Records (PR Trophy Case) Modal
+    const prModal = document.getElementById('prModal');
+    const openPrModal = () => {
+      renderPrTrophyModal();
+      if (prModal) prModal.classList.remove('hidden');
+    };
+    const btnOpenPrModal = document.getElementById('btnOpenPrModal');
+    const prBadgesRow = document.getElementById('prBadgesRow');
+    const btnClosePrModal = document.getElementById('btnClosePrModal');
+
+    if (btnOpenPrModal) btnOpenPrModal.addEventListener('click', openPrModal);
+    if (prBadgesRow) prBadgesRow.addEventListener('click', openPrModal);
+    if (btnClosePrModal && prModal) {
+      btnClosePrModal.addEventListener('click', () => prModal.classList.add('hidden'));
+    }
+    if (prModal) {
+      prModal.addEventListener('click', e => {
+        if (e.target === prModal) prModal.classList.add('hidden');
+      });
+    }
+
+    // History Table Edit, Delete & PR Badge Actions
     document.getElementById('historyTableBody').addEventListener('click', async e => {
+      if (e.target.closest('.pr-row-badge')) {
+        openPrModal();
+        return;
+      }
+
       const editBtn = e.target.closest('.row-btn.edit');
       if (editBtn) {
         const id = Number(editBtn.dataset.id);
