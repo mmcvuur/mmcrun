@@ -126,7 +126,8 @@ const defaultSettings = {
   max_hr: '162',
   resting_hr: '56',
   gemini_model: 'gemini-3-flash-preview',
-  coach_persona: ''
+  coach_persona: '',
+  ntfy_topic: ''
 };
 
 const insertSettingStmt = db.prepare(
@@ -723,7 +724,8 @@ const server = http.createServer(async (req, res) => {
           maskedKey: maskApiKey(activeKey),
           keySource: activeKey ? 'env' : 'none',
           model: savedModel,
-          coachPersona: rawSettings.coach_persona || ''
+          coachPersona: rawSettings.coach_persona || '',
+          ntfyTopic: rawSettings.ntfy_topic || ''
         }
       });
     }
@@ -751,6 +753,9 @@ const server = http.createServer(async (req, res) => {
         if (typeof body.coachPersona === 'string') {
           upsert.run('coach_persona', body.coachPersona.trim());
         }
+        if (typeof body.ntfyTopic === 'string') {
+          upsert.run('ntfy_topic', body.ntfyTopic.trim());
+        }
         db.exec('COMMIT');
       } catch (err) {
         db.exec('ROLLBACK');
@@ -766,9 +771,61 @@ const server = http.createServer(async (req, res) => {
           maskedKey: maskApiKey(activeKey),
           keySource: activeKey ? 'env' : 'none',
           model: rawSettings.gemini_model || 'gemini-3-flash-preview',
-          coachPersona: rawSettings.coach_persona || ''
+          coachPersona: rawSettings.coach_persona || '',
+          ntfyTopic: rawSettings.ntfy_topic || ''
         }
       });
+    }
+
+    if (pathname === '/api/coach/ntfy' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const rawSettings = getRawSettings();
+      const rawTopic = String(body.topic || rawSettings.ntfy_topic || '').trim();
+      if (!rawTopic) {
+        return sendJson(res, 400, {
+          error: 'No ntfy.sh topic configured. Add your ntfy topic in "API KEY & PROFILE".'
+        });
+      }
+
+      const content = String(body.content || '').trim();
+      if (!content) {
+        return sendJson(res, 400, { error: 'Cannot send empty message to ntfy.' });
+      }
+
+      // Support either a bare topic name (e.g. "mmcrun-coach-xyz") or a full ntfy URL
+      const targetUrl = /^https?:\/\//i.test(rawTopic)
+        ? rawTopic
+        : `https://ntfy.sh/${encodeURIComponent(rawTopic.replace(/^\/+/, ''))}`;
+
+      const rawTitle = String(body.title || 'mmcRUN Coach').replace(/[^\x20-\x7E]/g, '').trim() || 'mmcRUN Coach';
+      const byteLen = Buffer.byteLength(content, 'utf8');
+      const headers = {
+        'Title': rawTitle,
+        'Tags': 'runner,sparkles',
+        'Markdown': 'yes'
+      };
+
+      // If payload > 3.8KB, ntfy.sh automatically treats the body as an attachment;
+      // setting Filename ensures it arrives as a clean readable .md document on the phone
+      if (byteLen > 3800 || body.asFile === true) {
+        const dateSlug = new Date().toISOString().slice(0, 10);
+        headers['Filename'] = `mmcrun-coach-${dateSlug}.md`;
+      }
+
+      const ntfyRes = await fetch(targetUrl, {
+        method: 'POST',
+        headers,
+        body: content
+      });
+
+      if (!ntfyRes.ok) {
+        const errText = await ntfyRes.text().catch(() => '');
+        return sendJson(res, 502, {
+          error: `ntfy.sh returned HTTP ${ntfyRes.status}${errText ? `: ${errText.slice(0, 120)}` : ''}`
+        });
+      }
+
+      return sendJson(res, 200, { ok: true, topic: rawTopic });
     }
 
     if (pathname === '/api/coach/messages' && req.method === 'DELETE') {

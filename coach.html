@@ -279,11 +279,55 @@
     .msg-meta {
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 8px;
       font-size: 10px;
       font-weight: 700;
       color: var(--text-muted);
       padding: 0 4px;
+      width: 100%;
+    }
+
+    .msg-meta-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .msg-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .msg-action-btn {
+      background: var(--bg-deep);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-dim);
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      padding: 2px 7px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.14s ease;
+    }
+
+    .msg-action-btn:hover:not(:disabled) {
+      color: var(--text-bright);
+      border-color: var(--tn-cyan);
+      background: var(--bg-hover);
+    }
+
+    .msg-action-btn.action-ntfy:hover:not(:disabled) {
+      color: var(--tn-purple);
+      border-color: var(--tn-purple);
+    }
+
+    .msg-action-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
     .msg-role-tag {
@@ -726,6 +770,12 @@
               <option value="gemini-3.8-flash">gemini-3.8-flash</option>
               <option value="gemini-3.1-pro-preview">gemini-3.1-pro-preview (Pro)</option>
             </select>
+            <button type="button" class="btn btn-xs btn-ghost" id="btnSendThreadNtfy" title="Push entire conversation to your phone via ntfy.sh">
+              SEND TO NTFY
+            </button>
+            <button type="button" class="btn btn-xs btn-ghost" id="btnExportMd" title="Download conversation as a Markdown (.md) file">
+              EXPORT .MD
+            </button>
             <button type="button" class="btn btn-xs btn-ghost" id="btnOpenConfigModal">
               API KEY &amp; PROFILE
             </button>
@@ -827,6 +877,19 @@
           </span>
         </div>
 
+        <div class="form-field">
+          <label for="inputNtfyTopic">NTFY.SH TOPIC FOR PHONE EXPORT (OPTIONAL)</label>
+          <input
+            type="text"
+            id="inputNtfyTopic"
+            placeholder="e.g. mmcrun-coach-yourname99 (or full https://ntfy.sh/... URL)"
+            autocomplete="off"
+          />
+          <span class="text-xs text-muted" style="margin-top: 4px; display: block;">
+            Subscribe to this topic in the free <code>ntfy</code> mobile app to push coach replies or full conversations to your phone in 1 click.
+          </span>
+        </div>
+
         <div class="modal-footer" style="padding: 8px 0 0 0; border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
           <button type="button" class="btn btn-xs btn-danger-outline" id="btnClearSavedKey">CLEAR SAVED KEY</button>
           <div style="display: flex; gap: 8px;">
@@ -859,7 +922,8 @@
         maskedKey: '',
         keySource: 'none',
         model: 'gemini-3-flash-preview',
-        coachPersona: ''
+        coachPersona: '',
+        ntfyTopic: ''
       };
       let messages = [];
       let isSending = false;
@@ -884,6 +948,7 @@
       const inputApiKey = document.getElementById('inputApiKey');
       const inputCoachModel = document.getElementById('inputCoachModel');
       const inputCoachPersona = document.getElementById('inputCoachPersona');
+      const inputNtfyTopic = document.getElementById('inputNtfyTopic');
       const keySavedHint = document.getElementById('keySavedHint');
 
       function showToast(msg, isError = false) {
@@ -1162,7 +1227,8 @@
 
         chatEmptyStateEl.classList.add('hidden');
 
-        for (const m of messages) {
+        for (let idx = 0; idx < messages.length; idx++) {
+          const m = messages[idx];
           const row = document.createElement('div');
           const isUser = m.role === 'user';
           row.className = `msg-row ${isUser ? 'msg-user' : 'msg-model'}`;
@@ -1171,9 +1237,17 @@
           const meta = document.createElement('div');
           meta.className = 'msg-meta';
           meta.innerHTML = `
-            <span class="msg-role-tag">${isUser ? 'YOU' : 'GEMINI RUN COACH'}</span>
-            ${!isUser && m.model ? `<span>• ${escapeHtml(m.model)}</span>` : ''}
-            ${timeLabel ? `<span>• ${escapeHtml(timeLabel)}</span>` : ''}
+            <div class="msg-meta-info">
+              <span class="msg-role-tag">${isUser ? 'YOU' : 'GEMINI RUN COACH'}</span>
+              ${!isUser && m.model ? `<span>• ${escapeHtml(m.model)}</span>` : ''}
+              ${timeLabel ? `<span>• ${escapeHtml(timeLabel)}</span>` : ''}
+            </div>
+            ${!isUser ? `
+            <div class="msg-actions">
+              <button type="button" class="msg-action-btn action-copy" data-msg-index="${idx}" title="Copy Markdown (works with Universal Clipboard)">COPY</button>
+              <button type="button" class="msg-action-btn action-ntfy" data-msg-index="${idx}" title="Push this coach reply to your phone via ntfy.sh">SEND TO NTFY</button>
+            </div>
+            ` : ''}
           `;
 
           const bubble = document.createElement('div');
@@ -1270,6 +1344,7 @@
         inputCoachModel.value = coachConfig.model || 'gemini-3-flash-preview';
         if (!inputCoachModel.value) inputCoachModel.value = 'gemini-3-flash-preview';
         inputCoachPersona.value = coachConfig.coachPersona || '';
+        inputNtfyTopic.value = coachConfig.ntfyTopic || '';
         coachConfigModal.classList.remove('hidden');
         if (!coachConfig.hasApiKey) {
           setTimeout(() => inputApiKey.focus(), 50);
@@ -1362,7 +1437,8 @@
             body: JSON.stringify({
               apiKey: inputApiKey.value.trim(),
               model: inputCoachModel.value,
-              coachPersona: inputCoachPersona.value.trim()
+              coachPersona: inputCoachPersona.value.trim(),
+              ntfyTopic: inputNtfyTopic.value.trim()
             })
           });
           const data = await res.json();
@@ -1374,6 +1450,134 @@
         } catch (err) {
           showToast(err.message, true);
         }
+      });
+
+      function buildThreadMarkdown() {
+        const dateStr = new Date().toISOString().slice(0, 10);
+        const lines = [
+          `# mmcRUN Coach Conversation (${dateStr})`,
+          `**10K Goal:** ${settings.goal_distance_km || '10.0'} KM @ ${settings.goal_target_pace || '5:20'}/km (Target Date: ${settings.goal_target_date || '2026-12-06'})`,
+          ``
+        ];
+        for (const m of messages) {
+          const roleTitle = m.role === 'user' ? 'You' : `Gemini Run Coach${m.model ? ` (${m.model})` : ''}`;
+          const ts = formatLocalTimestamp(m.created_at);
+          lines.push(`### ${roleTitle}${ts ? ` — ${ts}` : ''}`);
+          lines.push(String(m.content || '').trim());
+          lines.push(``);
+          lines.push(`---`);
+          lines.push(``);
+        }
+        return lines.join('\n').trim() + '\n';
+      }
+
+      async function copyTextToClipboard(text, triggerBtn) {
+        try {
+          await navigator.clipboard.writeText(text);
+          if (triggerBtn) {
+            const orig = triggerBtn.textContent;
+            triggerBtn.textContent = 'COPIED ✓';
+            setTimeout(() => { triggerBtn.textContent = orig; }, 1600);
+          }
+          showToast('Copied to clipboard');
+        } catch (_) {
+          showToast('Failed to copy to clipboard', true);
+        }
+      }
+
+      async function pushToNtfy(content, title, triggerBtn) {
+        if (!coachConfig.ntfyTopic) {
+          openConfigModal();
+          setTimeout(() => inputNtfyTopic.focus(), 60);
+          showToast('Set your ntfy.sh topic first to push to your phone', true);
+          return;
+        }
+        const origLabel = triggerBtn ? triggerBtn.textContent : '';
+        if (triggerBtn) {
+          triggerBtn.disabled = true;
+          triggerBtn.textContent = 'SENDING...';
+        }
+        try {
+          const res = await fetch('/api/coach/ntfy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content, title })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Failed to push to ntfy.sh');
+          if (triggerBtn) {
+            triggerBtn.textContent = 'SENT ✓';
+            setTimeout(() => {
+              triggerBtn.textContent = origLabel;
+              triggerBtn.disabled = false;
+            }, 1800);
+          }
+          showToast(`Sent to ntfy.sh (${coachConfig.ntfyTopic})`);
+        } catch (err) {
+          if (triggerBtn) {
+            triggerBtn.textContent = origLabel;
+            triggerBtn.disabled = false;
+          }
+          showToast(err.message, true);
+        }
+      }
+
+      chatMessagesEl.addEventListener('click', e => {
+        const copyBtn = e.target.closest('.action-copy');
+        if (copyBtn) {
+          const idx = parseInt(copyBtn.dataset.msgIndex, 10);
+          const msg = messages[idx];
+          if (!msg) return;
+          // Include preceding user question for context if available
+          const prev = idx > 0 && messages[idx - 1].role === 'user' ? messages[idx - 1] : null;
+          const payload = prev
+            ? `> **Q:** ${prev.content}\n\n${msg.content}`
+            : msg.content;
+          copyTextToClipboard(payload, copyBtn);
+          return;
+        }
+
+        const ntfyBtn = e.target.closest('.action-ntfy');
+        if (ntfyBtn) {
+          const idx = parseInt(ntfyBtn.dataset.msgIndex, 10);
+          const msg = messages[idx];
+          if (!msg) return;
+          const prev = idx > 0 && messages[idx - 1].role === 'user' ? messages[idx - 1] : null;
+          const payload = prev
+            ? `**Q:** ${prev.content}\n\n---\n\n${msg.content}`
+            : msg.content;
+          const titleDate = formatLocalTimestamp(msg.created_at) || new Date().toISOString().slice(0, 10);
+          pushToNtfy(payload, `mmcRUN Coach (${titleDate})`, ntfyBtn);
+        }
+      });
+
+      document.getElementById('btnSendThreadNtfy').addEventListener('click', e => {
+        if (messages.length === 0) {
+          showToast('No conversation messages to send yet', true);
+          return;
+        }
+        const md = buildThreadMarkdown();
+        const dateStr = new Date().toISOString().slice(0, 10);
+        pushToNtfy(md, `mmcRUN Coach Thread (${dateStr})`, e.currentTarget);
+      });
+
+      document.getElementById('btnExportMd').addEventListener('click', () => {
+        if (messages.length === 0) {
+          showToast('No conversation messages to export yet', true);
+          return;
+        }
+        const md = buildThreadMarkdown();
+        const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const dateSlug = new Date().toISOString().slice(0, 10);
+        a.href = url;
+        a.download = `mmcrun-coach-${dateSlug}.md`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        showToast(`Exported mmcrun-coach-${dateSlug}.md`);
       });
 
       document.getElementById('btnClearSavedKey').addEventListener('click', async () => {
