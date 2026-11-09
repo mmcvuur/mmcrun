@@ -53,6 +53,7 @@
    TOKYO NIGHT PALETTE & DESIGN TOKENS
    ========================================================================== */
 :root {
+  color-scheme: dark;
   --bg-deep: #16161e;
   --bg-main: #1a1b26;
   --bg-card: #1f2335;
@@ -553,14 +554,16 @@ button {
   gap: 6px;
 }
 
-.field {
+.field,
+.form-field {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   min-width: 0;
 }
 
-.field label {
+.field label,
+.form-field label {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -590,9 +593,13 @@ button {
 .unit-blue { background: rgba(122, 162, 247, 0.16); color: var(--tn-blue); }
 .unit-purple { background: rgba(187, 154, 247, 0.16); color: var(--tn-purple); }
 .unit-red { background: rgba(247, 118, 142, 0.16); color: var(--tn-red); }
+.unit-green { background: rgba(158, 206, 106, 0.16); color: var(--tn-green); }
+.unit-cyan { background: rgba(125, 207, 255, 0.16); color: var(--tn-cyan); }
 
 .field input,
-.field select {
+.field select,
+.form-field input,
+.form-field select {
   width: 100%;
   height: 30px;
   min-width: 0;
@@ -607,7 +614,25 @@ button {
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.batch-textarea {
+.field select,
+.form-field select,
+.select-xs {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%237dcfff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 24px;
+  cursor: pointer;
+}
+
+select option {
+  background-color: var(--bg-deep);
+  color: var(--text-bright);
+}
+
+.batch-textarea,
+.form-field textarea {
   width: 100%;
   min-width: 0;
   background-color: var(--bg-input);
@@ -623,9 +648,35 @@ button {
 
 .field input:focus,
 .field select:focus,
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus,
 .batch-textarea:focus {
   border-color: var(--tn-blue);
   box-shadow: 0 0 0 2px rgba(122, 162, 247, 0.2);
+}
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-deep);
+  border: 1px solid var(--border-main);
+  color: var(--text-dim);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+
+.btn-icon:hover {
+  background: var(--bg-hover);
+  color: var(--text-bright);
+  border-color: var(--tn-purple);
 }
 
 .field-sub {

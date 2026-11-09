@@ -192,12 +192,17 @@
     }
 
     .model-select {
-      background: var(--bg-deep);
+      -webkit-appearance: none;
+      appearance: none;
+      background-color: var(--bg-deep);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%237dcfff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
       border: 1px solid var(--border-main);
       color: var(--tn-cyan);
       font-size: 11px;
       font-weight: 700;
-      padding: 4px 8px;
+      padding: 4px 24px 4px 8px;
       border-radius: var(--radius-sm);
       outline: none;
       cursor: pointer;
@@ -629,6 +634,253 @@
       color: var(--tn-orange);
       border-color: rgba(255, 158, 100, 0.45);
     }
+
+    /* ==========================================================================
+       REDESIGNED COACH PROFILE & SETTINGS MODAL
+       ========================================================================== */
+    .coach-config-modal-card {
+      width: 100%;
+      max-width: 600px;
+      max-height: 90dvh;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-card);
+      border: 1px solid var(--border-main);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 22px 56px rgba(0, 0, 0, 0.65);
+      overflow: hidden;
+    }
+
+    .coach-config-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 16px;
+      background: linear-gradient(90deg, rgba(187, 154, 247, 0.1), rgba(36, 40, 59, 0.95));
+      border-bottom: 1px solid var(--border-subtle);
+      flex-shrink: 0;
+    }
+
+    .coach-config-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .coach-config-body {
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+    }
+
+    .cfg-section {
+      background: var(--bg-deep);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .cfg-section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding-bottom: 7px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .cfg-section-title {
+      font-size: 10.5px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      color: var(--text-bright);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .cfg-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    @media (min-width: 560px) {
+      .cfg-grid-2 {
+        grid-template-columns: 1.15fr 0.85fr;
+      }
+    }
+
+    .cfg-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      min-width: 0;
+    }
+
+    .cfg-label-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .cfg-label-row label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: var(--text-main);
+    }
+
+    .cfg-input-group {
+      display: flex;
+      align-items: stretch;
+      gap: 6px;
+      width: 100%;
+    }
+
+    .cfg-input,
+    .cfg-select,
+    .cfg-textarea {
+      width: 100%;
+      min-width: 0;
+      background-color: var(--bg-main);
+      border: 1px solid var(--border-main);
+      border-radius: var(--radius-sm);
+      color: var(--text-bright);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 7px 10px;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+    }
+
+    .cfg-input,
+    .cfg-select {
+      height: 34px;
+    }
+
+    .cfg-select {
+      -webkit-appearance: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23bb9af7' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 28px;
+      color: var(--tn-cyan);
+      cursor: pointer;
+    }
+
+    .cfg-textarea {
+      line-height: 1.5;
+      resize: vertical;
+      min-height: 88px;
+      max-height: 220px;
+      font-weight: 500;
+    }
+
+    .cfg-input::placeholder,
+    .cfg-textarea::placeholder {
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .cfg-input:focus,
+    .cfg-select:focus,
+    .cfg-textarea:focus {
+      background-color: var(--bg-deep);
+      border-color: var(--tn-purple);
+      box-shadow: 0 0 0 2px rgba(187, 154, 247, 0.2);
+    }
+
+    .cfg-status-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+      line-height: 1.45;
+      border: 1px solid var(--border-subtle);
+      background: rgba(26, 27, 38, 0.75);
+      color: var(--text-main);
+    }
+
+    .cfg-status-banner.status-active {
+      background: rgba(158, 206, 106, 0.08);
+      border-color: rgba(158, 206, 106, 0.35);
+    }
+
+    .cfg-status-banner.status-missing {
+      background: rgba(255, 158, 100, 0.08);
+      border-color: rgba(255, 158, 100, 0.35);
+    }
+
+    .cfg-status-banner code,
+    .cfg-hint code {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      color: var(--tn-cyan);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 10.5px;
+    }
+
+    .cfg-hint {
+      font-size: 10.5px;
+      line-height: 1.45;
+      color: var(--text-dim);
+      white-space: normal;
+    }
+
+    .cfg-quick-chips {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .cfg-chip {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      color: var(--text-main);
+      font-size: 9.5px;
+      font-weight: 700;
+      padding: 3px 7px;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+
+    .cfg-chip:hover {
+      border-color: var(--tn-purple);
+      color: var(--tn-purple);
+      background: var(--bg-hover);
+    }
+
+    .cfg-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding-top: 10px;
+      margin-top: 2px;
+      border-top: 1px solid var(--border-subtle);
+      flex-wrap: wrap;
+    }
+
+    .cfg-footer-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
   </style>
 </head>
 <body>
@@ -831,68 +1083,127 @@
 
   <!-- GEMINI API KEY & RUNNER PROFILE MODAL -->
   <div class="modal-backdrop hidden" id="coachConfigModal">
-    <div class="modal-card" style="max-width: 500px;">
-      <div class="modal-header">
-        <div class="card-title-group">
+    <div class="coach-config-modal-card" role="dialog" aria-modal="true" aria-labelledby="coachConfigModalTitle">
+      <div class="coach-config-header">
+        <div class="coach-config-header-left">
           <span class="card-indicator indicator-purple"></span>
-          <h3 class="card-title">GEMINI API KEY &amp; COACH PROFILE</h3>
+          <h3 class="card-title" id="coachConfigModalTitle">GEMINI API KEY &amp; COACH PROFILE</h3>
+          <span class="badge badge-green" id="modalKeyStatusBadge">KEY ACTIVE</span>
         </div>
-        <button type="button" class="btn-icon" id="btnCloseConfigModal" aria-label="Close">&times;</button>
+        <button type="button" class="btn btn-xs btn-ghost" id="btnCloseConfigModal" aria-label="Close">&times; CLOSE</button>
       </div>
 
-      <form id="coachConfigForm" class="modal-body" style="display: flex; flex-direction: column; gap: 12px;">
-        <div class="form-field">
-          <label for="inputApiKey">GEMINI API KEY (SAVED LOCALLY IN .ENV)</label>
-          <input
-            type="password"
-            id="inputApiKey"
-            placeholder="Paste your AIza... key from Google AI Studio"
-            autocomplete="off"
-          />
-          <span class="text-xs text-muted" id="keySavedHint" style="margin-top: 4px; display: block;">
-            Stored locally in your git-ignored <code>.env</code> file and never saved in <code>mmcruns.db</code>.
-          </span>
+      <form id="coachConfigForm" class="coach-config-body" autocomplete="off">
+        <!-- SECTION 01: CREDENTIALS & AI MODEL -->
+        <div class="cfg-section">
+          <div class="cfg-section-head">
+            <span class="cfg-section-title"><span class="text-purple">01 //</span> CREDENTIALS &amp; AI ENGINE</span>
+            <span class="unit-badge unit-green">LOCAL .ENV STORAGE</span>
+          </div>
+
+          <div class="cfg-status-banner status-active" id="keySavedHint">
+            <span>Stored locally in your git-ignored <code>.env</code> file and never saved in <code>mmcruns.db</code>.</span>
+          </div>
+
+          <div class="cfg-grid-2">
+            <div class="cfg-field">
+              <div class="cfg-label-row">
+                <label for="inputApiKey">GEMINI API KEY</label>
+                <span class="label-hint">Google AI Studio</span>
+              </div>
+              <div class="cfg-input-group">
+                <input
+                  type="password"
+                  id="inputApiKey"
+                  class="cfg-input"
+                  placeholder="Paste AIza... key from Google AI Studio"
+                  autocomplete="off"
+                />
+                <button type="button" class="btn btn-xs btn-ghost" id="btnToggleKeyVis" title="Show or hide typed API key">
+                  SHOW
+                </button>
+              </div>
+            </div>
+
+            <div class="cfg-field">
+              <div class="cfg-label-row">
+                <label for="inputCoachModel">DEFAULT GEMINI MODEL</label>
+                <span class="unit-badge unit-cyan">ENGINE</span>
+              </div>
+              <select id="inputCoachModel" class="cfg-select">
+                <option value="gemini-3-flash-preview">gemini-3-flash (Recommended — Fast)</option>
+                <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite (Lightweight)</option>
+                <option value="gemini-3.8-flash">gemini-3.8-flash</option>
+                <option value="gemini-3.1-pro-preview">gemini-3.1-pro-preview (Pro Reasoning)</option>
+              </select>
+            </div>
+          </div>
         </div>
 
-        <div class="form-field">
-          <label for="inputCoachModel">DEFAULT GEMINI MODEL</label>
-          <select id="inputCoachModel">
-            <option value="gemini-3-flash-preview">gemini-3-flash (Recommended — Fast &amp; Reliable)</option>
-            <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite (Lightweight)</option>
-            <option value="gemini-3.8-flash">gemini-3.8-flash</option>
-            <option value="gemini-3.1-pro-preview">gemini-3.1-pro-preview (Pro)</option>
-          </select>
+        <!-- SECTION 02: RUNNER PROFILE & COACHING PERSONA -->
+        <div class="cfg-section">
+          <div class="cfg-section-head">
+            <span class="cfg-section-title"><span class="text-cyan">02 //</span> RUNNER PROFILE &amp; CUSTOM CONTEXT</span>
+            <span class="unit-badge unit-purple">SYSTEM PROMPT</span>
+          </div>
+
+          <div class="cfg-field">
+            <div class="cfg-label-row">
+              <label for="inputCoachPersona">TRAINING SCHEDULE, BIOMECHANICS &amp; COACHING PREFERENCES</label>
+              <span class="label-hint">OPTIONAL</span>
+            </div>
+            <textarea
+              id="inputCoachPersona"
+              class="cfg-textarea"
+              rows="4"
+              placeholder="e.g. I run 3-4 days a week (Tue/Thu/Sun). Sunday is my long run day. Watch out for mild left calf tightness. Prefer 80/20 polarized aerobic training."
+            ></textarea>
+            <div class="cfg-quick-chips" id="personaQuickChips">
+              <span class="preset-label">QUICK ADD:</span>
+              <button type="button" class="cfg-chip" data-snippet="I run 3-4 days/week (Tue/Thu/Sun) with Sunday as my long run.">+ Schedule (Tue/Thu/Sun)</button>
+              <button type="button" class="cfg-chip" data-snippet="Prefer strict 80/20 polarized aerobic training with Zone 2 HR caps.">+ 80/20 Polarized</button>
+              <button type="button" class="cfg-chip" data-snippet="Prioritize joint/tendon recovery and gradual volume progression.">+ Recovery Focus</button>
+            </div>
+            <p class="cfg-hint">
+              Automatically injected into Gemini's system instructions on every message alongside your live SQLite3 telemetry.
+            </p>
+          </div>
         </div>
 
-        <div class="form-field">
-          <label for="inputCoachPersona">RUNNER PROFILE / CUSTOM CONTEXT (OPTIONAL)</label>
-          <textarea
-            id="inputCoachPersona"
-            rows="4"
-            placeholder="e.g. I run 3-4 days a week (Tue/Thu/Sun). Sunday is my long run day. Watch out for mild left calf tightness. Prefer 80/20 polarized training."
-            style="background: var(--bg-input); border: 1px solid var(--border-main); border-radius: var(--radius-sm); padding: 8px 10px; color: var(--text-bright); font-size: 12px; resize: vertical;"
-          ></textarea>
-          <span class="text-xs text-muted" style="margin-top: 4px; display: block;">
-            Included in Gemini's system instructions on every message.
-          </span>
+        <!-- SECTION 03: NTFY.SH PHONE PUSH EXPORT -->
+        <div class="cfg-section">
+          <div class="cfg-section-head">
+            <span class="cfg-section-title"><span class="text-green">03 //</span> NTFY.SH PHONE PUSH EXPORT</span>
+            <span class="unit-badge unit-blue">1-CLICK MOBILE SYNC</span>
+          </div>
+
+          <div class="cfg-field">
+            <div class="cfg-label-row">
+              <label for="inputNtfyTopic">NTFY.SH TOPIC NAME OR URL</label>
+              <span class="label-hint">OPTIONAL</span>
+            </div>
+            <div class="cfg-input-group">
+              <input
+                type="text"
+                id="inputNtfyTopic"
+                class="cfg-input"
+                placeholder="e.g. MMCNET-run (or https://ntfy.sh/your-topic)"
+                autocomplete="off"
+              />
+              <button type="button" class="btn btn-xs btn-ghost" id="btnTestNtfyModal" title="Send a test notification to this ntfy topic">
+                TEST PUSH
+              </button>
+            </div>
+            <p class="cfg-hint">
+              Subscribe to this topic in the free <code>ntfy</code> mobile app to push coach replies or full training plans to your phone in 1 click.
+            </p>
+          </div>
         </div>
 
-        <div class="form-field">
-          <label for="inputNtfyTopic">NTFY.SH TOPIC FOR PHONE EXPORT (OPTIONAL)</label>
-          <input
-            type="text"
-            id="inputNtfyTopic"
-            placeholder="e.g. mmcrun-coach-yourname99 (or full https://ntfy.sh/... URL)"
-            autocomplete="off"
-          />
-          <span class="text-xs text-muted" style="margin-top: 4px; display: block;">
-            Subscribe to this topic in the free <code>ntfy</code> mobile app to push coach replies or full conversations to your phone in 1 click.
-          </span>
-        </div>
-
-        <div class="modal-footer" style="padding: 8px 0 0 0; border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
+        <!-- FOOTER ACTIONS -->
+        <div class="cfg-footer">
           <button type="button" class="btn btn-xs btn-danger-outline" id="btnClearSavedKey">CLEAR SAVED KEY</button>
-          <div style="display: flex; gap: 8px;">
+          <div class="cfg-footer-right">
             <button type="button" class="btn btn-ghost btn-sm" id="btnCancelConfigModal">CANCEL</button>
             <button type="submit" class="btn btn-primary btn-sm">SAVE CONFIG</button>
           </div>
@@ -1333,14 +1644,48 @@
         }
       }
 
+      const modalKeyStatusBadge = document.getElementById('modalKeyStatusBadge');
+      const btnToggleKeyVis = document.getElementById('btnToggleKeyVis');
+      const btnTestNtfyModal = document.getElementById('btnTestNtfyModal');
+      const personaQuickChips = document.getElementById('personaQuickChips');
+
       function openConfigModal() {
         inputApiKey.value = '';
+        inputApiKey.type = 'password';
+        if (btnToggleKeyVis) btnToggleKeyVis.textContent = 'SHOW';
+
         inputApiKey.placeholder = coachConfig.hasApiKey
-          ? `Active Key: ${coachConfig.maskedKey} (leave blank to keep)`
+          ? `Active: ${coachConfig.maskedKey} (leave blank to keep)`
           : 'Paste your AIza... key from Google AI Studio';
-        keySavedHint.innerHTML = coachConfig.hasApiKey
-          ? `<span class="text-green">✓ Active key configured in <code>.env</code> (${escapeHtml(coachConfig.maskedKey)}).</span> Enter a new key only if you want to replace it.`
-          : 'Stored locally in your git-ignored <code>.env</code> file.';
+
+        if (coachConfig.hasApiKey) {
+          keySavedHint.className = 'cfg-status-banner status-active';
+          keySavedHint.innerHTML = `
+            <span class="status-dot" style="background: var(--tn-green); box-shadow: 0 0 6px var(--tn-green); margin-top: 4px; flex-shrink: 0;"></span>
+            <div>
+              <strong class="text-green">Active key configured in <code>.env</code> (${escapeHtml(coachConfig.maskedKey)})</strong><br />
+              <span class="text-muted">Enter a new key below only if you want to replace your saved key.</span>
+            </div>
+          `;
+          if (modalKeyStatusBadge) {
+            modalKeyStatusBadge.className = 'badge badge-green';
+            modalKeyStatusBadge.textContent = 'KEY ACTIVE';
+          }
+        } else {
+          keySavedHint.className = 'cfg-status-banner status-missing';
+          keySavedHint.innerHTML = `
+            <span class="status-dot" style="background: var(--tn-orange); box-shadow: 0 0 6px var(--tn-orange); margin-top: 4px; flex-shrink: 0;"></span>
+            <div>
+              <strong class="text-orange">No Gemini API key configured yet</strong><br />
+              <span class="text-muted">Stored locally in your git-ignored <code>.env</code> file and never saved in <code>mmcruns.db</code>.</span>
+            </div>
+          `;
+          if (modalKeyStatusBadge) {
+            modalKeyStatusBadge.className = 'badge badge-cyan';
+            modalKeyStatusBadge.textContent = 'SETUP REQUIRED';
+          }
+        }
+
         inputCoachModel.value = coachConfig.model || 'gemini-3-flash-preview';
         if (!inputCoachModel.value) inputCoachModel.value = 'gemini-3-flash-preview';
         inputCoachPersona.value = coachConfig.coachPersona || '';
@@ -1427,6 +1772,75 @@
       btnEmptySetupKey.addEventListener('click', openConfigModal);
       document.getElementById('btnCloseConfigModal').addEventListener('click', closeConfigModal);
       document.getElementById('btnCancelConfigModal').addEventListener('click', closeConfigModal);
+
+      coachConfigModal.addEventListener('click', e => {
+        if (e.target === coachConfigModal) closeConfigModal();
+      });
+
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && !coachConfigModal.classList.contains('hidden')) {
+          closeConfigModal();
+        }
+      });
+
+      if (btnToggleKeyVis) {
+        btnToggleKeyVis.addEventListener('click', () => {
+          const isPassword = inputApiKey.type === 'password';
+          inputApiKey.type = isPassword ? 'text' : 'password';
+          btnToggleKeyVis.textContent = isPassword ? 'HIDE' : 'SHOW';
+          inputApiKey.focus();
+        });
+      }
+
+      if (personaQuickChips) {
+        personaQuickChips.addEventListener('click', e => {
+          const chip = e.target.closest('.cfg-chip');
+          if (!chip) return;
+          const snippet = chip.dataset.snippet || '';
+          if (!snippet) return;
+          const current = inputCoachPersona.value.trim();
+          if (!current.includes(snippet)) {
+            inputCoachPersona.value = current ? `${current} ${snippet}` : snippet;
+          }
+          inputCoachPersona.focus();
+        });
+      }
+
+      if (btnTestNtfyModal) {
+        btnTestNtfyModal.addEventListener('click', async () => {
+          const topic = inputNtfyTopic.value.trim();
+          if (!topic) {
+            inputNtfyTopic.focus();
+            showToast('Enter an ntfy.sh topic first to test', true);
+            return;
+          }
+          btnTestNtfyModal.disabled = true;
+          btnTestNtfyModal.textContent = 'TESTING...';
+          try {
+            const res = await fetch('/api/coach/ntfy', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                topic,
+                title: 'mmcRUN Coach Connected',
+                content: `✅ **mmcRUN Gemini Coach** is linked to topic \`${topic}\`.\n10K Target: **${settings.goal_distance_km || '10.0'} KM @ ${settings.goal_target_pace || '5:20'}/km**`
+              })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to send test push');
+            btnTestNtfyModal.textContent = 'SENT ✓';
+            showToast(`Test notification sent to ${topic}`);
+            setTimeout(() => {
+              btnTestNtfyModal.textContent = 'TEST PUSH';
+              btnTestNtfyModal.disabled = false;
+            }, 1800);
+          } catch (err) {
+            btnTestNtfyModal.textContent = 'TEST PUSH';
+            btnTestNtfyModal.disabled = false;
+            showToast(err.message, true);
+          }
+        });
+      }
 
       coachConfigForm.addEventListener('submit', async e => {
         e.preventDefault();
