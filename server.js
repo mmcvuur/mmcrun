@@ -67,6 +67,35 @@ function setEnvApiKey(newKey) {
 
 // Initialize SQLite3 database
 const db = new DatabaseSync(DB_PATH);
+let dbClosed = false;
+
+function checkpointWal(mode = 'PASSIVE') {
+  if (dbClosed) return;
+  try {
+    db.exec(`PRAGMA wal_checkpoint(${mode});`);
+  } catch (_) {}
+}
+
+function closeDatabaseGracefully() {
+  if (dbClosed) return;
+  try {
+    checkpointWal('TRUNCATE');
+    db.close();
+    dbClosed = true;
+  } catch (_) {}
+}
+
+process.on('SIGINT', () => {
+  closeDatabaseGracefully();
+  process.exit(0);
+});
+process.on('SIGTERM', () => {
+  closeDatabaseGracefully();
+  process.exit(0);
+});
+process.on('exit', () => {
+  closeDatabaseGracefully();
+});
 
 db.exec(`
   PRAGMA journal_mode = WAL;
@@ -162,9 +191,17 @@ for (const [k, v] of Object.entries(defaultSettings)) {
   }
 })();
 
+function getLocalDateString(d = new Date()) {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 function formatPaceDisplay(secPerKm) {
-  const mins = Math.floor(secPerKm / 60);
-  const secs = Math.round(secPerKm % 60);
+  const total = Math.max(0, Math.round(Number(secPerKm) || 0));
+  const mins = Math.floor(total / 60);
+  const secs = total % 60;
   return `${mins}:${String(secs).padStart(2, '0')}`;
 }
 
@@ -246,6 +283,7 @@ function seedDemoRunsIfNeeded(force = false) {
 }
 
 seedDemoRunsIfNeeded(false);
+checkpointWal('TRUNCATE');
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -365,7 +403,7 @@ function buildCoachSystemInstruction(runs, settings) {
     return 'Z5 Max/VO2';
   };
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = getLocalDateString();
 
   let telemetrySummary = 'No runs logged yet.';
   let runsTable = 'None';
@@ -490,7 +528,7 @@ const server = http.createServer(async (req, res) => {
             ? parseInt(item.pace_sec_per_km, 10)
             : parsePaceToSeconds(item.pace);
           const avgHr = parseInt(item.avg_hr, 10);
-          const runDate = (item.run_date || new Date().toISOString().slice(0, 10)).trim();
+          const runDate = (item.run_date || getLocalDateString()).trim();
           const runType = (item.run_type || 'easy').trim();
           const notes = (item.notes || '').trim();
 
@@ -527,6 +565,7 @@ const server = http.createServer(async (req, res) => {
           insertedIds.push(Number(result.lastInsertRowid));
         }
         db.exec('COMMIT');
+        checkpointWal('PASSIVE');
       } catch (err) {
         db.exec('ROLLBACK');
         return sendJson(res, 400, { error: err.message });
@@ -550,7 +589,7 @@ const server = http.createServer(async (req, res) => {
         ? parseInt(item.pace_sec_per_km, 10)
         : parsePaceToSeconds(item.pace);
       const avgHr = parseInt(item.avg_hr, 10);
-      const runDate = (item.run_date || new Date().toISOString().slice(0, 10)).trim();
+      const runDate = (item.run_date || getLocalDateString()).trim();
       const runType = (item.run_type || 'easy').trim();
       const notes = (item.notes || '').trim();
       const parsedShoe = item.shoe_id !== undefined ? parseInt(item.shoe_id, 10) : NaN;
@@ -584,6 +623,7 @@ const server = http.createServer(async (req, res) => {
         shoeId,
         id
       );
+      checkpointWal('PASSIVE');
 
       return sendJson(res, 200, { ok: true, ...getAllRunsAndSettings() });
     }
@@ -598,7 +638,7 @@ const server = http.createServer(async (req, res) => {
       if (!name) {
         return sendJson(res, 400, { error: 'Shoe name is required.' });
       }
-      const startDate = String(body.start_date || new Date().toISOString().slice(0, 10)).trim();
+      const startDate = String(body.start_date || getLocalDateString()).trim();
       const maxDistKm = Math.max(50, Math.min(5000, parseFloat(body.max_distance_km) || 650));
       const initialKm = Math.max(0, Math.min(5000, parseFloat(body.initial_km) || 0));
       const existingCount = db.prepare('SELECT COUNT(*) as count FROM shoes').get().count;
@@ -614,6 +654,7 @@ const server = http.createServer(async (req, res) => {
           VALUES (?, ?, ?, ?, ?)
         `).run(name, startDate, maxDistKm, initialKm, isDefault);
         db.exec('COMMIT');
+        checkpointWal('PASSIVE');
       } catch (err) {
         db.exec('ROLLBACK');
         return sendJson(res, 400, { error: err.message });
@@ -632,6 +673,7 @@ const server = http.createServer(async (req, res) => {
         db.exec('UPDATE shoes SET is_default = 0');
         db.prepare('UPDATE shoes SET is_default = 1 WHERE id = ?').run(id);
         db.exec('COMMIT');
+        checkpointWal('PASSIVE');
       } catch (err) {
         db.exec('ROLLBACK');
         return sendJson(res, 400, { error: err.message });
@@ -656,6 +698,7 @@ const server = http.createServer(async (req, res) => {
           }
         }
         db.exec('COMMIT');
+        checkpointWal('PASSIVE');
       } catch (err) {
         db.exec('ROLLBACK');
         return sendJson(res, 400, { error: err.message });
@@ -665,16 +708,19 @@ const server = http.createServer(async (req, res) => {
 
     if (pathname === '/api/runs/demo' && req.method === 'DELETE') {
       db.exec('DELETE FROM runs WHERE is_demo = 1');
+      checkpointWal('PASSIVE');
       return sendJson(res, 200, { ok: true, ...getAllRunsAndSettings() });
     }
 
     if (pathname === '/api/runs/all' && req.method === 'DELETE') {
       db.exec('DELETE FROM runs');
+      checkpointWal('PASSIVE');
       return sendJson(res, 200, { ok: true, ...getAllRunsAndSettings() });
     }
 
     if (pathname === '/api/runs/seed' && req.method === 'POST') {
       seedDemoRunsIfNeeded(true);
+      checkpointWal('PASSIVE');
       return sendJson(res, 200, { ok: true, ...getAllRunsAndSettings() });
     }
 
@@ -684,6 +730,7 @@ const server = http.createServer(async (req, res) => {
         return sendJson(res, 400, { error: 'Invalid run ID' });
       }
       db.prepare('DELETE FROM runs WHERE id = ?').run(id);
+      checkpointWal('PASSIVE');
       return sendJson(res, 200, { ok: true, ...getAllRunsAndSettings() });
     }
 
@@ -701,6 +748,7 @@ const server = http.createServer(async (req, res) => {
           }
         }
         db.exec('COMMIT');
+        checkpointWal('PASSIVE');
       } catch (err) {
         db.exec('ROLLBACK');
         return sendJson(res, 400, { error: err.message });
@@ -757,6 +805,7 @@ const server = http.createServer(async (req, res) => {
           upsert.run('ntfy_topic', body.ntfyTopic.trim());
         }
         db.exec('COMMIT');
+        checkpointWal('PASSIVE');
       } catch (err) {
         db.exec('ROLLBACK');
         return sendJson(res, 400, { error: err.message });
@@ -808,7 +857,7 @@ const server = http.createServer(async (req, res) => {
       // If payload > 3.8KB, ntfy.sh automatically treats the body as an attachment;
       // setting Filename ensures it arrives as a clean readable .md document on the phone
       if (byteLen > 3800 || body.asFile === true) {
-        const dateSlug = new Date().toISOString().slice(0, 10);
+        const dateSlug = getLocalDateString();
         headers['Filename'] = `mmcrun-coach-${dateSlug}.md`;
       }
 
@@ -830,6 +879,7 @@ const server = http.createServer(async (req, res) => {
 
     if (pathname === '/api/coach/messages' && req.method === 'DELETE') {
       db.exec('DELETE FROM coach_messages');
+      checkpointWal('PASSIVE');
       return sendJson(res, 200, { ok: true, messages: [] });
     }
 
@@ -929,6 +979,7 @@ const server = http.createServer(async (req, res) => {
         insertMsg.run('user', userPrompt, selectedModel);
         insertMsg.run('model', replyText, selectedModel);
         db.exec('COMMIT');
+        checkpointWal('PASSIVE');
       } catch (err) {
         db.exec('ROLLBACK');
         throw err;

@@ -752,16 +752,18 @@
 
       function formatPace(secPerKm) {
         if (!Number.isFinite(secPerKm) || secPerKm <= 0) return '--:--';
-        const mins = Math.floor(secPerKm / 60);
-        const secs = Math.round(secPerKm % 60);
+        const total = Math.round(secPerKm);
+        const mins = Math.floor(total / 60);
+        const secs = total % 60;
         return `${mins}:${String(secs).padStart(2, '0')}`;
       }
 
       function formatDuration(totalSec) {
         if (!Number.isFinite(totalSec) || totalSec <= 0) return '--:--';
-        const hrs = Math.floor(totalSec / 3600);
-        const mins = Math.floor((totalSec % 3600) / 60);
-        const secs = Math.round(totalSec % 60);
+        const total = Math.round(totalSec);
+        const hrs = Math.floor(total / 3600);
+        const mins = Math.floor((total % 3600) / 60);
+        const secs = total % 60;
         if (hrs > 0) {
           return `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
         }
@@ -770,8 +772,9 @@
 
       function formatTotalHours(totalSec) {
         if (!Number.isFinite(totalSec) || totalSec <= 0) return '0h 00m';
-        const hrs = Math.floor(totalSec / 3600);
-        const mins = Math.round((totalSec % 3600) / 60);
+        const totalMins = Math.round(totalSec / 60);
+        const hrs = Math.floor(totalMins / 60);
+        const mins = totalMins % 60;
         return `${hrs}h ${String(mins).padStart(2, '0')}m`;
       }
 

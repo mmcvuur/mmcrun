@@ -71,18 +71,27 @@
     return num > 45 ? Math.round(num) : Math.round(num * 60);
   }
 
+  function getLocalDateString(d = new Date()) {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
   function formatPace(secPerKm) {
     if (!Number.isFinite(secPerKm) || secPerKm <= 0) return '--:--';
-    const mins = Math.floor(secPerKm / 60);
-    const secs = Math.round(secPerKm % 60);
+    const total = Math.round(secPerKm);
+    const mins = Math.floor(total / 60);
+    const secs = total % 60;
     return `${mins}:${String(secs).padStart(2, '0')}`;
   }
 
   function formatDuration(totalSec) {
     if (!Number.isFinite(totalSec) || totalSec <= 0) return '--:--';
-    const hrs = Math.floor(totalSec / 3600);
-    const mins = Math.floor((totalSec % 3600) / 60);
-    const secs = Math.round(totalSec % 60);
+    const total = Math.round(totalSec);
+    const hrs = Math.floor(total / 3600);
+    const mins = Math.floor((total % 3600) / 60);
+    const secs = total % 60;
     if (hrs > 0) {
       return `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
     }
@@ -91,8 +100,9 @@
 
   function formatTotalHours(totalSec) {
     if (!Number.isFinite(totalSec) || totalSec <= 0) return '0h 00m';
-    const hrs = Math.floor(totalSec / 3600);
-    const mins = Math.round((totalSec % 3600) / 60);
+    const totalMins = Math.round(totalSec / 60);
+    const hrs = Math.floor(totalMins / 60);
+    const mins = totalMins % 60;
     return `${hrs}h ${String(mins).padStart(2, '0')}m`;
   }
 
@@ -544,7 +554,7 @@
       return;
     }
 
-    const dateVal = document.getElementById('inputDate').value || new Date().toISOString().slice(0, 10);
+    const dateVal = document.getElementById('inputDate').value || getLocalDateString();
     const defaultShoe = shoes.find(s => Number(s.is_default) === 1) || shoes[0];
     if (defaultShoe && dateVal >= (defaultShoe.start_date || '2026-11-01')) {
       shoeSelect.value = String(defaultShoe.id);
@@ -574,7 +584,7 @@
       return;
     }
 
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = getLocalDateString();
 
     listEl.innerHTML = shoes
       .map(shoe => {
@@ -1278,7 +1288,7 @@
     document.getElementById('formTitle').textContent = 'LOG RUN TELEMETRY';
     document.getElementById('btnSubmitText').textContent = 'SAVE RUN';
     document.getElementById('btnCancelEdit').classList.add('hidden');
-    document.getElementById('inputDate').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('inputDate').value = getLocalDateString();
     document.getElementById('inputDistance').value = '';
     document.getElementById('inputPace').value = '';
     document.getElementById('inputHr').value = '';
@@ -1365,7 +1375,7 @@
     const dateInput = document.getElementById('inputDate');
     if (dateInput) {
       if (!dateInput.value) {
-        dateInput.value = new Date().toISOString().slice(0, 10);
+        dateInput.value = getLocalDateString();
       }
       dateInput.addEventListener('change', () => {
         if (!document.getElementById('editRunId').value) {
@@ -1460,7 +1470,7 @@
         const isHidden = addShoeForm.classList.contains('hidden');
         if (isHidden) {
           if (inputShoeStartDate && !inputShoeStartDate.value) {
-            inputShoeStartDate.value = new Date().toISOString().slice(0, 10);
+            inputShoeStartDate.value = getLocalDateString();
           }
           addShoeForm.classList.remove('hidden');
           document.getElementById('inputShoeName').focus();
@@ -1529,6 +1539,11 @@
         const delShoeBtn = e.target.closest('.btn-delete-shoe');
         if (delShoeBtn) {
           const id = Number(delShoeBtn.dataset.id);
+          const shoe = (state.shoes || []).find(s => Number(s.id) === id);
+          const shoeName = shoe ? shoe.name : 'this shoe';
+          if (!window.confirm(`Remove "${shoeName}" from the shoe distance tracker? (Logged runs will be kept.)`)) {
+            return;
+          }
           try {
             const data = await apiRequest(`/api/shoes/${id}`, { method: 'DELETE' });
             state.shoes = data.shoes || [];
@@ -1581,6 +1596,11 @@
       const delBtn = e.target.closest('.row-btn.delete');
       if (delBtn) {
         const id = Number(delBtn.dataset.id);
+        const run = state.runs.find(r => Number(r.id) === id);
+        const label = run ? `${run.run_date} (${Number(run.distance_km).toFixed(2)} KM)` : `#${id}`;
+        if (!window.confirm(`Delete run from ${label}?`)) {
+          return;
+        }
         try {
           const data = await apiRequest(`/api/runs/${id}`, { method: 'DELETE' });
           state.runs = data.runs;
@@ -1618,13 +1638,13 @@
 
     // Export JSON
     document.getElementById('btnExportJson').addEventListener('click', () => {
-      const blob = new Blob([JSON.stringify({ runs: state.runs, settings: state.settings }, null, 2)], {
+      const blob = new Blob([JSON.stringify({ runs: state.runs, shoes: state.shoes, settings: state.settings }, null, 2)], {
         type: 'application/json'
       });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `mmcrun-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `mmcrun-${getLocalDateString()}.json`;
       a.click();
       URL.revokeObjectURL(url);
       showToast('Exported run telemetry JSON');
@@ -1757,6 +1777,9 @@
     });
 
     document.getElementById('btnClearAllRuns').addEventListener('click', async () => {
+      if (!window.confirm('Are you sure you want to permanently delete ALL logged runs from SQLite3?')) {
+        return;
+      }
       try {
         const data = await apiRequest('/api/runs/all', { method: 'DELETE' });
         state.runs = data.runs;
