@@ -1,7 +1,70 @@
 const http = require('node:http');
+const https = require('node:https');
+const dns = require('node:dns');
 const fs = require('node:fs');
 const path = require('node:path');
 const { DatabaseSync } = require('node:sqlite');
+
+// Prefer IPv4 first for outbound requests (e.g. Gemini API & ntfy.sh)
+// to avoid EHOSTUNREACH / ENETUNREACH on servers without outbound IPv6 routing
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch (_) {}
+
+function outboundRequest(urlStr, options = {}) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(urlStr);
+    const isHttps = u.protocol === 'https:';
+    const lib = isHttps ? https : http;
+    const method = options.method || 'GET';
+    const headers = { ...(options.headers || {}) };
+    const bodyBuf = options.body !== undefined && options.body !== null
+      ? (Buffer.isBuffer(options.body) ? options.body : Buffer.from(String(options.body), 'utf8'))
+      : null;
+
+    if (bodyBuf && !headers['Content-Length'] && !headers['content-length']) {
+      headers['Content-Length'] = String(bodyBuf.length);
+    }
+
+    const req = lib.request(
+      {
+        protocol: u.protocol,
+        hostname: u.hostname,
+        port: u.port || (isHttps ? 443 : 80),
+        path: u.pathname + u.search,
+        method,
+        headers,
+        family: 4, // Force IPv4 to prevent IPv6 blackhole/EHOSTUNREACH on new servers
+        timeout: 45000
+      },
+      res => {
+        const chunks = [];
+        res.on('data', chunk => chunks.push(chunk));
+        res.on('end', () => {
+          const textData = Buffer.concat(chunks).toString('utf8');
+          const status = res.statusCode || 500;
+          resolve({
+            ok: status >= 200 && status < 300,
+            status,
+            text: async () => textData,
+            json: async () => JSON.parse(textData)
+          });
+        });
+      }
+    );
+
+    req.on('timeout', () => {
+      req.destroy(new Error(`Connection timed out reaching ${u.hostname}`));
+    });
+    req.on('error', err => {
+      const code = err.code || err.cause?.code || '';
+      reject(new Error(`Outbound connection to ${u.hostname} failed${code ? ` (${code})` : ''}: ${err.message}`));
+    });
+
+    if (bodyBuf) req.write(bodyBuf);
+    req.end();
+  });
+}
 
 const PORT = process.env.PORT || 3000;
 const DB_PATH = path.join(__dirname, 'mmcruns.db');
@@ -861,7 +924,7 @@ const server = http.createServer(async (req, res) => {
         headers['Filename'] = `mmcrun-coach-${dateSlug}.md`;
       }
 
-      const ntfyRes = await fetch(targetUrl, {
+      const ntfyRes = await outboundRequest(targetUrl, {
         method: 'POST',
         headers,
         body: content
@@ -926,7 +989,7 @@ const server = http.createServer(async (req, res) => {
 
       async function callGeminiModel(modelName) {
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent?key=${encodeURIComponent(apiKey)}`;
-        const res = await fetch(geminiUrl, {
+        const res = await outboundRequest(geminiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

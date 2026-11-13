@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mmcrun-v23';
+const CACHE_NAME = 'mmcrun-v24';
 
 const PRECACHE_ASSETS = [
   '/',
